@@ -17,5 +17,5 @@ APScheduler==3.6.3
 requests==2.23.0
 pysnmp==4.4.12
 pymemcache==2.1.1
-cryptography==3.2
+cryptography==3.3.2
 suds_jurko==0.6
