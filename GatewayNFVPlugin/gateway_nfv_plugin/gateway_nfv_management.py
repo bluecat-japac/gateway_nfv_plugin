@@ -1,5 +1,5 @@
 
-# Copyright 2019 BlueCat Networks (USA) Inc. and its affiliates
+# Copyright 2021 BlueCat Networks (USA) Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -246,6 +246,9 @@ def scale_in(data):
         server_name = data['server_name']
         server = get_server_by_name(config_id, server_name)
         server_id = server['id']
+        if server_id == 0:
+            return jsonify({"status": "Failed", "message": "Scale in failed",
+                            "error": str('Server {} not found!'.format(server_name))}), 403
         if server['properties'].split('|')[0].split('=')[0] == "defaultInterfaceAddress":
             server_ip = server['properties'].split('|')[0].split('=')[1]
         else:
@@ -891,6 +894,8 @@ def get_available_addresses(management_network, service_network):
             mem_nfv.set_network(mgnt_ipv6, "0", 1800)
         srv_ip_str = ""
         srv_ipv6_str = ""
+        srv_ip = ""
+        srv_ipv6_ip = ""
         if srv_cidr:
             srv_ip = get_ip_in_list_in_used_ips(mem_nfv, srv_start_ip, srv_end_ip, used_ipv4)
         if srv_ipv6_cidr:

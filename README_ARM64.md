@@ -99,7 +99,7 @@ Below is the architecture diagram:
 
 2. Configure **Gateway Container**:
 
-    ![DC BlueCat Gateway](images/docker_compose_nfv_gateway.png?raw=true)
+    ![DC BlueCat Gateway](images/docker_compose_nfv_gateway_arm64.png?raw=true)
 
     Where: 
     
@@ -201,7 +201,7 @@ docker build -t gateway_nfv_scheduler .
 1. Execute this command to install 3rd Python libraries with correct path of gateway and gateway-nfv-plugin workflow directories:
 
     ```bash
-    docker exec nfv_gateway pip install --target /bluecat_gateway/customizations/integrations -r /bluecat_gateway/workflows/gateway_nfv_plugin/requirements.txt
+    ocker exec nfv_gateway pip install -r /bluecat_gateway/workflows/gateway_nfv_plugin/requirements.txt
     ```
 
 2. Access to Gateway UI. In the left sidebar, navigate to **Administration** and **Encrypt Password** action. Input the path `workflows/gateway_nfv_plugin/config/.secret` set in `config.ini` and the password of `user_name` user.

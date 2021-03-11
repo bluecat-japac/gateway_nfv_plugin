@@ -22,7 +22,7 @@ services:
       - ${NFV_SCHEDULER_LOGS}:/statistics_collection/logs
       - ${PWD}/config:/config
   nfv_gateway:
-    image: quay.io/bluecat/gateway:18.10.2
+    image: quay.io/bluecat/gateway:20.6.1
     container_name: nfv_gateway
     ports:
       - "8088:8000"
