@@ -14,5 +14,5 @@
 # limitations under the License.
 
 pymemcache==2.1.1
-cryptography==2.4.2
+cryptography==3.3.2
 suds_jurko==0.6
