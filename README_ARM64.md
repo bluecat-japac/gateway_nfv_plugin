@@ -7,8 +7,8 @@ Below is the architecture diagram:
 
 ## Requirements
 
-- BlueCat Gateway Version: 20.6.1
-- BAM/BDDS Version: 9.2
+- BlueCat Gateway Version: 20.6.1 and later
+- BAM/BDDS Version: 9.2 and later
 
 ## Setup 
 ### BAM Setup
@@ -61,7 +61,7 @@ Below is the architecture diagram:
     | `k1_api` | The necessary information for k1 api |
     | `vm_host_ip` | The ip address of vm host |
     | `vm_host_name` | The name of vm host |
-    | `log_level` | The log text level (ex: ERROR, INFO, WARNING..) |
+    | `log_setting` | The necessary information for log setting |
 
 3. Modify `extracted-directory/gateway_nfv_plugin/config/snmp_config.json` and input the corresponding information for each BAM and BDDS:
 
@@ -113,7 +113,10 @@ Below is the architecture diagram:
     | `enviroment` | Environment of container includes BAM_IP and LOCAL_USER_ID |
     | `volumes` | config gateway directory and logs want to mount here |
 
-    > Note: Remember to configure **BAM_IP**, **LOCAL_USER_ID** and **PATH OF NFV_GATEWAY** 
+    > Note: Remember to configure **BAM_IP**, **LOCAL_USER_ID** and **PATH OF NFV_GATEWAY** <br>
+    For the Gateway version `20.12.1` or later:<br>
+    - Additional `SESSION_COOKIE_SECURE: false` in `enviroment`
+    - Replace `/buitin/` intead of `/bluecat_gateway/`
 
 3. Configure **Memcached** container
 
@@ -199,9 +202,13 @@ docker build -t gateway_nfv_scheduler .
 ## Install 3rd Python libraries for Gateway Container
 
 1. Execute this command to install 3rd Python libraries with correct path of gateway and gateway-nfv-plugin workflow directories:
-
+    For the Gateway version `20.6.1`:
     ```bash
-    ocker exec nfv_gateway pip install -r /bluecat_gateway/workflows/gateway_nfv_plugin/requirements.txt
+    docker exec nfv_gateway pip install -r /bluecat_gateway/workflows/gateway_nfv_plugin/requirements.txt
+    ```
+     For the Gateway version `20.12.1` or later:
+    ```bash
+    docker exec nfv_gateway pip install -r /builtin/workflows/gateway_nfv_plugin/requirements.txt
     ```
 
 2. Access to Gateway UI. In the left sidebar, navigate to **Administration** and **Encrypt Password** action. Input the path `workflows/gateway_nfv_plugin/config/.secret` set in `config.ini` and the password of `user_name` user.

@@ -145,13 +145,13 @@ def collect_statistics(mem_nfv):
     # Get server list from memcached
     list_bdds, list_bam, list_vmhosts = mem_nfv.get_list_servers()
     
-    logger.debug("List_bdds: {}\nList_bam: {}\nList_vmhost: {}".format(list_bdds, list_bam, list_vmhosts))
+    logger.info("List_bdds: {}\nList_bam: {}\nList_vmhost: {}".format(list_bdds, list_bam, list_vmhosts))
     snmp_config = read_config_json_file(SNMP_CONFIG_PATH)
     logger.debug("Snmp config: {}".format(snmp_config))
     list_servers = []
 
-    logger.info(f'List BDDS Size: {len(list_bdds)}')
-    logger.info(f'Begin loop through list_bdds')
+    logger.debug(f'List BDDS Size: {len(list_bdds)}')
+    logger.debug(f'Begin loop through list_bdds')
     for bdds in list_bdds:
         logger.debug(f'BDDS: {bdds}')
         bdds_config_name = get_snmp_server_config_name(snmp_config, bdds.name)
@@ -164,8 +164,8 @@ def collect_statistics(mem_nfv):
             logger.error(f'Exception Key Error {exception}')
             logger.error(traceback.format_exc())
             continue
-    logger.info(f'List BAM Size: {len(list_bam)}')
-    logger.info(f'Begin loop through list_bam')
+    logger.debug(f'List BAM Size: {len(list_bam)}')
+    logger.debug(f'Begin loop through list_bam')
     for bam in list_bam:
         try:
             logger.debug(f'BAM: {bam}')
@@ -173,17 +173,17 @@ def collect_statistics(mem_nfv):
             bam_config_name = get_snmp_server_config_name(snmp_config, bam.name)
             logger.debug(f'Bam config name {bam_config_name}')
             try:
-                logger.info(f'Begin Append BAM server list Server {list_servers}  ')
+                logger.debug(f'Begin Append BAM server list Server {list_servers}  ')
                 list_servers.append({
                     'server_type': ServerType.BAM, 'server_name': bam.name, 'address': bam.ipv4_address,
                     'snmp_config_data': snmp_config[bam_config_name]})
-                logger.info(f'End append BAM ===> List Server {list_servers}')
+                logger.debug(f'End append BAM ===> List Server {list_servers}')
             except KeyError as exception:
                 logger.error(f'Exception Key Error {exception}')
                 logger.error(traceback.format_exc())
                 continue
         except Exception as exception:
-            logger.info(f'Cant get bam.ipv4_address: {exception}')
+            logger.error(f'Cant get bam.ipv4_address: {exception}')
     logger.info(f'List VMHOST Size: {len(list_vmhosts)}')
     logger.info(f'Begin loop through list_vmhosts')
     for vm_host in list_vmhosts:
@@ -193,17 +193,17 @@ def collect_statistics(mem_nfv):
             vm_host_config_name = get_snmp_server_config_name(snmp_config, vm_host.name)
             logger.debug(f'VM_HOST config name {vm_host_config_name}')
             try:
-                logger.info(f'Begin Append VM_HOST server list Server {list_servers}  ')
+                logger.debug(f'Begin Append VM_HOST server list Server {list_servers}  ')
                 list_servers.append({
                     'server_type': ServerType.VM_HOST, 'server_name': vm_host.name, 'address': vm_host.ipv4_address,
                     'snmp_config_data': snmp_config[vm_host_config_name]})
-                logger.info(f'End append  VM_HOST  ===> List Server {list_servers}')
+                logger.debug(f'End append  VM_HOST  ===> List Server {list_servers}')
             except KeyError as exception:
                 logger.error(f'Exception Key Error {exception}')
                 logger.error(traceback.format_exc())
                 continue
         except Exception as exception:
-            logger.info(f'Can not get vm_host.ip_address: {exception}')
+            logger.error(f'Can not get vm_host.ip_address: {exception}')
 
     logger.info(f'Begin get statistic with list server {list_servers}')
     result = []
@@ -227,31 +227,34 @@ def scheduler_get_statistic_job():
 
 
 def main():
-    # Clean
-    logger.info("Clean memcached before init")
-    memcached_host, memcached_port = get_memcached_config()
-    mem_nfv = MemcachedNFV(memcached_host, memcached_port)
-    mem_nfv.clean_memcached()
-    mem_nfv.disconnect()
-    # Init server list
-    init_server_cached_list_api()
+    try:
+        # Clean
+        logger.info("Clean memcached before init")
+        memcached_host, memcached_port = get_memcached_config()
+        mem_nfv = MemcachedNFV(memcached_host, memcached_port)
+        mem_nfv.clean_memcached()
+        mem_nfv.disconnect()
+        # Init server list
+        init_server_cached_list_api()
 
-    # Scheduler for get statistic
-    data_config = read_config_json_file(NFV_CONFIG_PATH)
-    interval = int(data_config['interval'])
+        # Scheduler for get statistic
+        data_config = read_config_json_file(NFV_CONFIG_PATH)
+        interval = int(data_config['interval'])
 
-    executors = {
-        'default': {'type': 'threadpool', 'max_workers': 20},
-        'processpool': ProcessPoolExecutor(max_workers=5)
-    }
-    job_defaults = {
-        'coalesce': False,
-        'max_instances': 3
-    }
-    scheduler = BlockingScheduler()
-    scheduler.configure(executors=executors, job_defaults=job_defaults)
-    scheduler.add_job(scheduler_get_statistic_job, 'interval', seconds=interval)
-    scheduler.start()
+        executors = {
+            'default': {'type': 'threadpool', 'max_workers': 20},
+            'processpool': ProcessPoolExecutor(max_workers=5)
+        }
+        job_defaults = {
+            'coalesce': False,
+            'max_instances': 3
+        }
+        scheduler = BlockingScheduler()
+        scheduler.configure(executors=executors, job_defaults=job_defaults)
+        scheduler.add_job(scheduler_get_statistic_job, 'interval', seconds=interval)
+        scheduler.start()
+    except Exception as exception:
+        logger.error('Exception in main: error = ' + str(exception))
 
 
 if __name__ == '__main__':
