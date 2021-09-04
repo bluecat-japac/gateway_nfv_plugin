@@ -63,12 +63,12 @@ def prepare_payload_for_k1(result_statictis):
     try:
         udf_object = {}
         for udf_string in result_statictis['udf'].split(','):
-            logger.info(udf_string)
+            logger.debug(udf_string)
             try:
                 udf_string_array = udf_string.split(':')
                 udf_object.update({udf_string_array[0]: udf_string_array[1]})
             except KeyError as exeption:
-                logger.info(f'UDF string has incorrect format')
+                logger.error(f'UDF string has incorrect format')
                 continue
     except Exception as exeption:
         logger.info(f'result statistic does not have udf')
@@ -93,11 +93,11 @@ def call_k1_api(result_object, timeout=1):
     :return:
     """
     if not result_object:
-        logger.debug("Result_object is none")
+        logger.info("Result_object is none")
         return
 
     payload = prepare_payload_for_k1(result_object)
-    logger.info(f'Payload of K1: {payload}')
+    logger.debug(f'Payload of K1: {payload}')
 
     if is_kpi_none(payload):
         logger.info(f'KPIs are none. Do not call api k1')

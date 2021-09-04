@@ -35,14 +35,16 @@ class Logger(object):
     NFV Logger
     """
 
-    def get_log_level(self):
+    def get_log_setting(self):
         """
-        Get level log
+        Get log setting
         :return:
         """
         nfv_config = read_config_json_file(NFV_CONFIG_PATH)
-        logging_text_level = nfv_config["log_level"]
-        return map_text_log_level(logging_text_level)
+        logging_text_level = nfv_config["log_setting"]["log_level"] if "log_level" in nfv_config["log_setting"].keys() else "WARNING"
+        maxbytes= nfv_config["log_setting"]["maxbytes"] if "maxbytes" in nfv_config["log_setting"].keys() else 10000000
+        backupcount = nfv_config["log_setting"]["backupcount"] if "backupcount" in nfv_config["log_setting"].keys() else 10
+        return map_text_log_level(logging_text_level), maxbytes, backupcount
 
     def __init__(self, log_name='nfv', base_dir=''):
         """
@@ -51,7 +53,7 @@ class Logger(object):
         self.log_name = log_name
         self._datetime = None
         log_format = '[%(asctime)s][PID:%(process)d] %(levelname)s: %(message)s'
-        log_level = self.get_log_level()
+        log_level, maxbytes, backupcount = self.get_log_setting()
         log_timestamp_format = '%Y-%m-%dT%H:%M:%SZ'
         log_file_timestamp_format = "%d-%m-%Y-%I%p"
         if base_dir == '':
@@ -60,11 +62,11 @@ class Logger(object):
         if not os.path.exists(log_path):
             os.makedirs(log_path)
         try:
-            self._logger = self.create_logger_object(log_format, log_level, log_path,
+            self._logger = self.create_logger_object(log_format, log_level, maxbytes, backupcount, log_path,
                                                      log_timestamp_format, log_file_timestamp_format)
         except Exception as exception:
             try:
-                self._logger = self.create_logger_object(log_format, log_level, log_path,
+                self._logger = self.create_logger_object(log_format, log_level, maxbytes, backupcount, log_path,
                                                          log_timestamp_format, log_file_timestamp_format)
             # pylint: disable=broad-except
             except Exception as exception:
@@ -76,7 +78,7 @@ class Logger(object):
         """
         self.remove_handlers()
 
-    def create_logger_object(self, log_module_format, log_module_level, log_module_path, log_timestamp_format,
+    def create_logger_object(self, log_module_format, log_module_level, maxbytes, backupcount, log_module_path, log_timestamp_format,
                              log_file_timestamp_format):
         """
         Create log
@@ -94,7 +96,7 @@ class Logger(object):
         logger.setLevel(log_module_level)
         formatter = logging.Formatter(log_module_format, log_timestamp_format)
         formatter.converter = time.gmtime
-        handler = RotatingFileHandler(log_path, maxBytes=20000000, backupCount=10)
+        handler = RotatingFileHandler(log_path, maxBytes=maxbytes, backupCount=backupcount)
         handler.setLevel(log_module_level)
         handler.setFormatter(formatter)
         logger.addHandler(handler)

@@ -31,17 +31,19 @@ class TestLogger(unittest.TestCase):
     """
     @mock.patch.object(Logger, '__init__', lambda x, y: None)  # mock init
     @mock.patch('common.logger.read_config_json_file')
-    def test_get_log_level(self, mock_read_config_json_file):
+    def test_get_log_setting(self, mock_read_config_json_file):
         """
         :param:
         :return:
         """
         call_class = Logger("1")
         nfv_config = {
-            "log_level": "INFO"
+            "log_setting": {
+                "log_level": "INFO"
+            }
         }
         mock_read_config_json_file.return_value = nfv_config
-        call_class.get_log_level()
+        call_class.get_log_setting()
 
     @mock.patch.object(Logger, '__init__', lambda x, y: None)  # mock init
     def test_debug(self):

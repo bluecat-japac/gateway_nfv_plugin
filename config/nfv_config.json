@@ -39,5 +39,9 @@
     },
     "vm_host_ip":  "",
     "vm_host_name": "VMHOST_0005",
-    "log_level":"DEBUG"
+    "log_setting": {
+        "log_level":"WARNING",
+        "maxbytes": 10000,
+        "backupcount": 5
+    }
 }
