@@ -7,8 +7,8 @@ Below is the architecture diagram:
 
 ## Requirements
 
-- BlueCat Gateway Version: 20.6.1 and later
-- BAM/BDDS Version: 9.2 and later
+- BlueCat Gateway Version: 20.6.1 or grater
+- BAM/BDDS Version: 9.2 or grater
 
 ## Setup 
 ### BAM Setup
@@ -31,13 +31,9 @@ Below is the architecture diagram:
 
 ## Setup workflow
 
-1. SSH to the host which has gateway container running and extract **gateway_nfv_plugin.tar.gz** to the gateway workflow directory:
+Before to setup `config` for Gateway NFV Plugin workflow, make sure you have the following file formats: `nfv_config.json`, `snmp_config.json` & `vm_config.ini`
 
-    ```bash
-    tar -xzvf gateway_nfv_plugin.tar.gz
-    ```
-
-2. Modify `extracted-directory/gateway_nfv_plugin/config/nfv_config.json` and input the corresponding information:
+1. Modify `config/nfv_config.json` and input the corresponding information:
 
     | Fields | Description |
     | --- | --- |
@@ -63,7 +59,7 @@ Below is the architecture diagram:
     | `vm_host_name` | The name of vm host |
     | `log_setting` | The necessary information for log setting |
 
-3. Modify `extracted-directory/gateway_nfv_plugin/config/snmp_config.json` and input the corresponding information for each BAM and BDDS:
+2. Modify `config/snmp_config.json` and input the corresponding information for each BAM and BDDS:
 
     | Fields | Description |
     | --- | --- |
@@ -77,13 +73,32 @@ Below is the architecture diagram:
 
     If the bam or bdds name is not included in this **.json** file, `common` config is automatically used.
 
-4. For configuration memcached server, change it in `extracted-directory/gateway_nfv_plugin/config/memcached.conf` file.
+3. Modify injected file contains management IP and service IP of the BDDS in the path `config/vm_config.ini`
 
-5. Modify injected file contains management IP and service IP of the BDDS in the path `extracted-directory/gateway_nfv_plugin/config/vm_config.ini`
+4. Create and modify `.secret` and `.secretkey` files with the correct name in `nfv_config.json`. It must be in the same directory.
 
-## Configure Docker Compose
+## Deployment
+### Setup for docker compose
 
- Modify in `extracted-directory/gateway_nfv_plugin/docker-compose.yml` and input the corresponding information
+1. Pull NFV Gateway and NFV Scheduler image from Registry:
+
+    ```
+    docker login registry.bluecatlabs.net
+    docker pull <image-registry-name>:<tag>
+    ```
+    
+    > Example: docker pull registry.bluecatlabs.net/professional-services/japac-tma/
+    gateway_nfv_plugin:nfv-gateway-master
+
+    Or copy the <nfv-image>.tar.gz file to the host machine and run cmd:
+    
+    ```
+    docker load -i <nfv-image>.tar.gz
+    ```
+
+### Configure Docker Compose
+
+ Modify in `deployment/dockerfiles/docker-compose.yml` and input the corresponding information
 
 1. Configure **bridge network**:
 
@@ -103,28 +118,23 @@ Below is the architecture diagram:
 
     Where: 
     
-    | Fields | Description |
-    | --- | --- |
-    | `image` | docker images and version of Gateway Container |
-    | `container_name` | The name of container |
-    | `ports` | Port want to expose to external machine |
-    | `ipv4_address` | IPv4Address  of container |
-    | `ipv6_address` | IPv6Address  of container |
-    | `enviroment` | Environment of container includes BAM_IP and LOCAL_USER_ID |
-    | `volumes` | config gateway directory and logs want to mount here |
-
-    > Note: Remember to configure **BAM_IP**, **LOCAL_USER_ID** and **PATH OF NFV_GATEWAY** <br>
-    For the Gateway version `20.12.1` or later:<br>
-    - Additional `SESSION_COOKIE_SECURE: false` in `enviroment`
-    - Replace `/buitin/` intead of `/bluecat_gateway/`
+    | Fields | Description | Example |
+    | --- | --- | --- |
+    | `image` | Docker images and version of Gateway Container. Currently, use the docker image from *Trouble Shooting UI* | trouble-shooting-ui|
+    | `container_name` | The name of container | Default name: `nfv_gateway`|
+    | `ports` | Port want to expose to external machine | Default port: `8088` |
+    | `ipv4_address` | IPv4Address of container | Default IPv4: `192.0.2.13` |
+    | `ipv6_address` | IPv6Address of container | Default IPv6: `2001:DB8::2001:DB8:0:3`|
+    | `enviroment` | Environment of container | Mandatory for BAM_IP & LOCAL_USER_ID. Optional for SESSION_COOKIE_SECURE (use for Gateway v20.12.1 or greater) |
+    | `volumes` | Configure mount directories | `<gw-logs-dir>:/logs` <br> `<nfv-config-dir>:/builtin/workflows/gateway_nfv_plugin/config/` |
 
 3. Configure **Memcached** container
 
     ![DC Memcached](images/docker_compose_memcache.png?raw=true)
 
     | Fields | Description |
-    | --- | --- |
-    | `image` | docker images and version of Memcached |
+    | --- | --- | 
+    | `image` | docker images and version of `memcached` |
     | `container_name` | The name of container |
     | `ipv4_address` | IPv4 address of container |
     | `ipv6_address` | IPv6 address of container |
@@ -143,14 +153,14 @@ Below is the architecture diagram:
 
 
 > Note: Remember to set the permissions to external volumes with the **data** and **logs** directories:
+>```
+>chmod -R o=rwx <mapped volume>
+>```
 
-```
-chmod -R o=rwx <mapped volume>
-```
 
 ## Build the docker Scheduler Statistic Collection image
 
-Using when you want to change code scheduler and rebuild it or not have **gateway_nfv_scheduler.tar**.
+Using when you want to change code scheduler and rebuild it or not have Scheduler image from registry or **gateway_nfv_scheduler.tar**.
 
 Run this command:
 ```
@@ -178,20 +188,18 @@ docker build -t gateway_nfv_scheduler .
 
 > Make sure the permissions of directories is allowed before running the scheduler.
 
-## Deploy by Docker Compose Command
+### Deploy by Docker Compose Command
 
 1. Make sure to configured all the files with corresponding information before running build all of the containers: 
 
     ```bash
-    cd extracted-directory/gateway_nfv_plugin/
     docker-compose up -d
     ```
 
-    > Note: Can run each of service in **docker-compose.yml** by command:
-    
-    ```bash
-    docker-compose up -d <name-of-service>
-    ```
+    > Note: Run each of service in **docker-compose.yml** by command:
+    > ```bash
+    > docker-compose up -d <name-of-service>
+    > ```
 
 2. To remove all of containers in docker compose, run command:
 
@@ -199,46 +207,18 @@ docker build -t gateway_nfv_scheduler .
     docker-compose down --remove-orphans
     ```
 
-## Install 3rd Python libraries for Gateway Container
-
-1. Execute this command to install 3rd Python libraries with correct path of gateway and gateway-nfv-plugin workflow directories:
-    For the Gateway version `20.6.1`:
-    ```bash
-    docker exec nfv_gateway pip install -r /bluecat_gateway/workflows/gateway_nfv_plugin/requirements.txt
-    ```
-     For the Gateway version `20.12.1` or later:
-    ```bash
-    docker exec nfv_gateway pip install -r /builtin/workflows/gateway_nfv_plugin/requirements.txt
-    ```
-
-2. Access to Gateway UI. In the left sidebar, navigate to **Administration** and **Encrypt Password** action. Input the path `workflows/gateway_nfv_plugin/config/.secret` set in `config.ini` and the password of `user_name` user.
-
-    ![Encrypt Password](images/gateway_encrypt_pwd.png?raw=true)
-
-> Note: Ports of Gateway UI configured in the **docker-compose.yml** above
-
-3. Navigate to **Workflow Permission**. Add permission to access traffic steering workflow.
-
-    ![Workflow Permission](images/workflow_permission_gate_nfv.png?raw=true)
-
-    If the permission for gateway_nfv_plugin disappears, restart the gateway container and check again.
-
-4. Restart the containers:
-
-    ```
-    docker restart nfv_gateway
-    docker restart nfv_scheduler
-    ```
-
 ## Generate Encrypted Password
 
-1. Run `extracted-directory/gateway_nfv_plugin/common/process_password.py`:
+1. Exc `nfv_gateway` to encrypted password by cmd:
 
     ```bash
-    python process_password.py
-    or
-    python3 process_password.py
-    ```
+     docker exec -it nfv_gateway  python3 /builtin/workflows/gateway_nfv_plugin/common/process_password.py
+     ```
+     
+    > Note: or encrypt from `extracted-directory/gateway_nfv_plugin/common/process_password.py`:
+    >```bash
+    > python3 process_password.py
+    > ```
 
 2. Input the plaintext password and get the encrypted password.
 
@@ -249,38 +229,49 @@ docker build -t gateway_nfv_scheduler .
     Please update your encrypted password in nfv_config.json file
     ```
 
-3. Copy it and save in `config` files.
+3. Copy it and save in `config/nfv_config.json` files.
 
-4. Restart the containers:
+4. Restart container:
 
     ```
     docker restart nfv_gateway
     ```
+    
+    ```
 ## API
-### VM Scaling API
 
-1. Request format
+### Scaling API
 
-    | HTTP Request Method | URI |
+Request format:
+
+| HTTP Request Method | URI |
+| --- | --- |
+| POST | /gateway_nfv_plugin/scale_out |
+| POST | /gateway_nfv_plugin/scale_in |
+    
+#### Scale out API
+
+1. Request parameters
+
+    | Parameter Name | Description | Note |
+    | --- | --- | --- |
+    | server_name | Name of server | MANDATORY |
+    | mgnt_server_ip | IPv4 address of server | OPTIONAL |
+    | service_server_ipv4 | IPv4 address of server | OPTIONAL |
+    | service_server_ipv6 | IPv6 address of server | OPTIONAL |
+    | service_server_netmask | Netmask of IPv4 address | MANDATORY |
+    | service_server_v6_prefix | Prefix of IPv6 address | OPTIONAL |
+    | metadata | Currently only support `can_scale_in=true/false` UDF| OPTIONAL |
+
+2. Response parameter
+
+     Parameter Name | Description |
     | --- | --- |
-    | POST | /gateway_nfv_plugin/app_vm |
-    | DELETE | /gateway_nfv_plugin/app_vm |
+    | error | Error message. If having error after scaling |
+    | message | Success message |
+    | status | Status after scaling |
 
-2. Request parameters
-
-    | Parameter Name | Description |
-    | --- | --- |
-    | vm_info | VM Information List |
-    | --vm_type | Type of the VM |
-    | --vm_name | Name of the VM. The value of this parameter has 1 to 16 bytes(including '\0'). At least one of vm_name or vm_id parameter should be exist.
-
-3. Response parameter
-
-    | Parameter Name | Description |
-    | --- | --- |
-    | Result | OK or FAIL |
-
-4. Scale out sample
+3.  Sample
 
     ```
     POST /gateway_nfv_plugin/app_vm HTTP/1.1
@@ -288,50 +279,58 @@ docker build -t gateway_nfv_scheduler .
     Content-Type: application/json
     cache-control: no-cache
     Postman-Token: 0d883cb4-c64f-4a96-bdc6-c584cb32f195
-    {
-        "vm_info": [
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_01"
-            },
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_02"
-            }
-        ]
+     {
+        "server_name": "bdds13",
+        "mgnt_server_ip": "192.168.122.13",
+        "service_server_ipv4": "192.168.122.12",
+        "service_server_ipv6": "",
+        "service_server_netmask": 24,
+        "service_server_v6_prefix": "",
+        "metadata": "can_scale_in=true"
     }
 
     Successful response result:
     HTTP/1.1 200 OK
     {
+        "error": "",
+        "message": "Scale out successfully",
         "status": "Successful"
     }
     ```
 
-5. Scale in sample
+#### Scale in API
+
+1. Request parameters
+
+    | Parameter Name | Description |
+    | --- | --- |
+    | server_name | Name of server |
+
+2. Response parameter
+
+     Parameter Name | Description |
+    | --- | --- |
+    | error | Error message. If having error after scaling |
+    | message | Success message |
+    | status | Status after scaling |
+
+3.  Sample
 
     ```
-    DELETE /gateway_nfv_plugin/app_vm HTTP/1.1
+    POST /gateway_nfv_plugin/app_vm HTTP/1.1
     Host: example.com:5000
     Content-Type: application/json
     cache-control: no-cache
-    Postman-Token: 1e77f51a-759b-4b2e-ab41-c8a0c0aefb26
-    {
-        "vm_info": [
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_01"
-            },
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_02"
-            }
-        ]
+    Postman-Token: 0d883cb4-c64f-4a96-bdc6-c584cb32f195
+     {
+        "server_name": "bdds13"
     }
 
     Successful response result:
     HTTP/1.1 200 OK
     {
+        "error": "",
+        "message": "Scale in successfully",
         "status": "Successful"
     }
     ```

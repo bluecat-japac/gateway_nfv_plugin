@@ -46,19 +46,19 @@ def prepare_payload_for_k1(result_statictis):
     vmname = result_statictis['server_name']
     if result_statictis['server_type'] == ServerType.BAM:
         kpi_load = [
-            {"kpi_name": "cpu_load", "kpi_value": min(100, round(result_statictis['cpu_usage'])) if result_statictis['cpu_usage'] is not None else None},
+            {"kpi_name": "cpu_load", "kpi_value": min(100, round(result_statictis['cpu_usage'])) if result_statictis['cpu_usage'] != None else None},
             {"kpi_name": "mem_load", "kpi_value": round(result_statictis['memory_usage']) if result_statictis['memory_usage'] else None}
         ]
     elif result_statictis['server_type'] == ServerType.VM_HOST:
         kpi_load = [
-            {"kpi_name": "cpu_load", "kpi_value": min(100, round(result_statictis['cpu_usage'])) if result_statictis['cpu_usage'] is not None else None},
+            {"kpi_name": "cpu_load", "kpi_value": min(100, round(result_statictis['cpu_usage'])) if result_statictis['cpu_usage'] != None else None},
             {"kpi_name": "mem_load", "kpi_value": round(result_statictis['memory_usage']) if result_statictis['memory_usage'] else None}
         ]
     elif result_statictis['server_type'] == ServerType.BDDS:
         kpi_load = [
-            {"kpi_name": "cpu_load", "kpi_value": min(100, round(result_statictis['cpu_usage'])) if result_statictis['cpu_usage'] is not None else None},
+            {"kpi_name": "cpu_load", "kpi_value": min(100, round(result_statictis['cpu_usage'])) if result_statictis['cpu_usage'] != None else None},
             {"kpi_name": "mem_load", "kpi_value": round(result_statictis['memory_usage']) if result_statictis['memory_usage'] else None},
-            {"kpi_name": "dns_queries", "kpi_value": round(result_statictis['queries']) if result_statictis['queries'] is not None else None}
+            {"kpi_name": "dns_queries", "kpi_value": round(result_statictis['queries']) if result_statictis['queries'] != None else None}
         ]
     try:
         udf_object = {}
@@ -67,10 +67,10 @@ def prepare_payload_for_k1(result_statictis):
             try:
                 udf_string_array = udf_string.split(':')
                 udf_object.update({udf_string_array[0]: udf_string_array[1]})
-            except KeyError as exeption:
+            except KeyError:
                 logger.error(f'UDF string has incorrect format')
                 continue
-    except Exception as exeption:
+    except Exception:
         logger.info(f'result statistic does not have udf')
         pass
     app_status = result_statictis.get('app_status', 'ready')

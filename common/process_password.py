@@ -35,7 +35,7 @@ def decrypt_password(encoded):
 def main():
     while True:
         password = input("Let's type a new password:")
-        if password.strip() is not "":
+        if password.strip() != "":
             break
     pwd_encrypt = encrypt_password(password)
     print("{0} {1}".format("Your password is encrypted as:", pwd_encrypt))

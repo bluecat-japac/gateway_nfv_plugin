@@ -189,8 +189,6 @@ class TestGatewayNFVPage(unittest.TestCase):
         # pylint: disable=missing-docstring
         mock_request.method = 'POST'
         mock_read_config_json_file.side_effect = Exception("exception")
-        mock_gateway_nfv_management.get_configuration_id.side_effect = Exception("exception")
-        mock_gateway_nfv_management.get_list_servers.side_effect = Exception("exception")
         mock_g.user.logger.error.side_effect = Exception("exception")
         jsonify = {"Status": "FAIL"}
         mock_jsonify.return_value = jsonify
@@ -227,7 +225,6 @@ class TestGatewayNFVPage(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         configuration_id = 102728
-        mock_gateway_nfv_management.get_configuration_id.return_value = configuration_id
         list_servers = [
             {
                 "id": 124707,
@@ -242,7 +239,6 @@ class TestGatewayNFVPage(unittest.TestCase):
                 "properties": "defaultInterfaceAddress=192.168.22.1|fullHostName=BDDS82|profile=DNS_DHCP_INTEGRITY_BRANCH|"
             },
         ]
-        mock_gateway_nfv_management.get_list_servers.return_value = list_servers
         mem_nfv = mock.Mock()
         mock_memcached_nfv.return_value = mem_nfv
 

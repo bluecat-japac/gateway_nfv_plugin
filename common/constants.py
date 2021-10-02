@@ -1,4 +1,3 @@
-
 # Copyright 2021 BlueCat Networks (USA) Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,3 +16,10 @@ CONFIG_PATH = '../config'
 NFV_CONFIG_PATH = '../config/nfv_config.json'
 SNMP_CONFIG_PATH = '../config/snmp_config.json'
 VM_CONFIG_PATH = '../config/vm_config.ini'
+
+MAX_SERVER = 20
+CAN_SCALE_IN = 'can_scale_in'
+
+
+class ServerProfile():
+    DNS_DHCP_SERVER_60 = 'DNS_DHCP_SERVER_60'

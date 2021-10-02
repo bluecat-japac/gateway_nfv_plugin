@@ -1,4 +1,3 @@
-
 # Copyright 2021 BlueCat Networks (USA) Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,9 @@
 import os
 import sys
 import traceback
-from flask import request, g, abort, jsonify  # pylint:disable=import-error
+from flask import request, g, abort, jsonify, make_response  # pylint:disable=import-error
+
+from bluecat.entity import Entity
 
 # Import from memcached module
 sys.path.append(os.path.abspath(
@@ -36,7 +37,7 @@ from . import gateway_nfv_management  # pylint:disable=import-error
 @util.rest_workflow_permission_required('gateway_nfv_plugin_page')
 @util.rest_exception_catcher
 def init_server_cached_list():
-    """[init_server_cached_list: call api get servers in bam with CONFIGURATION_NAME]
+    """call api get servers in bam with CONFIGURATION_NAME
 
     Returns:
         [json] -- [
@@ -50,12 +51,8 @@ def init_server_cached_list():
         configuration_name = data_config['bam_config_name']
         g.user.logger.debug(
             'Init_server_cached_list - configuration_name: {}'.format(configuration_name))
-        configuration_id = gateway_nfv_management.get_configuration_id(
-            configuration_name)
-        g.user.logger.info(
-            'Get list server of configure_id {}'.format(configuration_id))
-        list_servers = gateway_nfv_management.get_list_servers(
-            configuration_id)
+        configuration_entity = g.user.get_api().get_configuration(configuration_name)
+        list_servers = g.user.get_api()._api_client.service.getEntities(configuration_entity.get_id(), Entity.Server, 0, 20)
         g.user.logger.info(
             'Init_server_cached_list - Number of get list server: {}'.format(len(list_servers)))
         # Init memcached
@@ -91,11 +88,15 @@ def nfv_api_scale_out():
     """
     if not request.json:
         abort(400)
-    data = request.get_json()
-    if request.method == "POST":
-        g.user.logger.info('Starting scale out')
-        return gateway_nfv_management.scale_out(data)
-    return jsonify([]), 200
+    try:
+        data = request.get_json()
+        if request.method == "POST":
+            g.user.logger.info('Starting scale out')
+            return gateway_nfv_management.scale_out(data)
+        return jsonify([]), 200
+    except Exception as e:
+        g.user.logger.error(traceback.format_exc())
+        return make_response(jsonify(str(e)), 500)
 
 
 @route(app, '/gateway_nfv_plugin/scale_in', methods=['POST'])
@@ -109,11 +110,15 @@ def nfv_api_scale_in():
     """
     if not request.json:
         abort(400)
-    data = request.get_json()
-    if request.method == "POST":
-        g.user.logger.info('Starting scale in')
-        return gateway_nfv_management.scale_in(data)
-    return jsonify([]), 200
+    try:
+        data = request.get_json()
+        if request.method == "POST":
+            g.user.logger.info('Starting scale in')
+            return gateway_nfv_management.scale_in(data)
+        return jsonify([]), 200
+    except Exception as e:
+        g.user.logger.error(traceback.format_exc())
+        return make_response(jsonify(str(e)), 500)
 
 
 @route(app, '/api/v1.0/srvo/instances/app_vm', methods=['POST', 'DELETE'])
@@ -128,44 +133,49 @@ def nfv_api_app_vm():
     """
     if not request.json:
         abort(400)
-    data = request.get_json()
-    response_status = []
-    errors = ''
-    if request.method == "POST":
-        for vm in data['vm_info']:
-            vm_name = vm['vm_name']
-            scale_out_data = get_vm_config_data(vm_name)
-            g.user.logger.info('Starting scale out')
-            response = gateway_nfv_management.scale_out(scale_out_data)
-            message = response[0].get_json()['message'] + f' for server {vm_name}'
-            status = response[0].get_json()['status']
-            error = response[0].get_json()['error']
-            g.user.logger.info(message)
-            response_status.append(status)
-            if error:
-                errors += error + f'({vm_name})\n'
-    if request.method == "DELETE":
-        for vm in data['vm_info']:
-            vm_name = vm['vm_name']
-            scale_in_data = {
-                "server_name": vm_name
-            }
-            g.user.logger.info('Starting scale in')
-            response = gateway_nfv_management.scale_in(scale_in_data)
-            message = response[0].get_json()['message'] + f' for server {vm_name}'
-            status = response[0].get_json()['status']
-            error = response[0].get_json()['error']
-            g.user.logger.info(message)
-            response_status.append(status)
-            if error:
-                errors += error + f' ({vm_name})\n'
+    try:
+        data = request.get_json()
+        response_status = []
+        errors = ''
+        if request.method == "POST":
+            for vm in data['vm_info']:
+                vm_name = vm['vm_name']
+                scale_out_data = get_vm_config_data(vm_name)
+                g.user.logger.info('Starting scale out')
+                response = gateway_nfv_management.scale_out(scale_out_data)
+                message = response[0].get_json()['message'] + f' for server {vm_name}'
+                status = response[0].get_json()['status']
+                error = response[0].get_json()['error']
+                g.user.logger.info(message)
+                response_status.append(status)
+                if error:
+                    errors += error + f'({vm_name})\n'
+        if request.method == "DELETE":
+            for vm in data['vm_info']:
+                vm_name = vm['vm_name']
+                scale_in_data = {
+                    "server_name": vm_name
+                }
+                g.user.logger.info('Starting scale in')
+                response = gateway_nfv_management.scale_in(scale_in_data)
+                message = response[0].get_json()['message'] + f' for server {vm_name}'
+                status = response[0].get_json()['status']
+                error = response[0].get_json()['error']
+                g.user.logger.info(message)
+                response_status.append(status)
+                if error:
+                    errors += error + f' ({vm_name})\n'
 
-    for status in response_status:
-        if status == 'Failed':
-            g.user.logger.info(f'Summary: Failed\nErrors: {errors}')
-            return jsonify({"status": "Failed"}), 500
-    g.user.logger.info('Summary: Successful')
-    return jsonify({"status": "Successful"}), 200
+        for status in response_status:
+            if status == 'Failed':
+                g.user.logger.debug(traceback.format_exc())
+                g.user.logger.info(f'Summary: Failed\nErrors: {errors}')
+                return jsonify({"status": "Failed"}), 500
+        g.user.logger.info('Summary: Successfully')
+        return jsonify({"status": "Successful"}), 200
+    except Exception as e:
+        g.user.logger.error(traceback.format_exc())
+        return make_response(jsonify(str(e)), 500)
 
 
 def get_vm_config_data(vm_name):
@@ -232,7 +242,7 @@ def get_metadata():
 @util.rest_exception_catcher
 def get_available_ip_address():
     """
-    API to get avalable ip address
+    API to get available ip address
     :return: example
     [json] -- [
             "management_ip": "192.168.88.2"
@@ -254,5 +264,4 @@ def get_available_ip_address():
     except ValueError as ex:
         g.user.logger.error('Init_server_cached_list - {}'.format(ex))
         g.user.logger.error(traceback.format_exc())
-        return jsonify(
-            {"status": "Failed", "message": "Invalid management network"}), 500
+        return jsonify({"status": "Failed", "message": "Invalid management network"}), 500
