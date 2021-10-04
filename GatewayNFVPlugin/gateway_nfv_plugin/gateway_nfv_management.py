@@ -262,8 +262,13 @@ def scale_in(data):
         g.user.logger.info('Anycast service stopped')
 
         # Remove a server from Address Manager control
-        g.user.logger.info('Remove a server named {} from Address Manager control'.format(server_name))
-        g.user.get_api()._api_client.service.updateWithOptions('disable=true|resetControl=true', server_object.to_json())
+        try:
+            bam_version = g.user.get_api()._version
+            if bam_version == '9.3.0':
+                g.user.logger.info('Remove a server named {} from Address Manager control'.format(server_name))
+                g.user.get_api()._api_client.service.updateWithOptions('disable=true|resetControl=true', server_object.to_json())
+        except Exception:
+            g.user.logger.warning('Not support remove a server {} from Address Manager version {}'.format(server_name, bam_version))
 
         # delete server from BAM
         g.user.logger.info('Deleting server %s from BAM' % server_name)
