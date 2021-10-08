@@ -19,7 +19,7 @@ import traceback
 from pymemcache.client import base  # pylint:disable=import-error
 
 # Internal
-from memcached.server import (ServerType, Bam, Bdds, VMHost)  # pylint:disable=import-error
+from memcached.server import ServerType, Bam, Bdds, VMHost  # pylint:disable=import-error
 
 
 class MemcachedNFV():

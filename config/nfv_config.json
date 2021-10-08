@@ -1,15 +1,15 @@
 {
     "bam": [
         {
-            "ip": "",
+            "ip": "<bam-ip>",
             "name": "DNS_999_BAM_0001"
         }
     ],
-    "server_deployment_password": "",
+    "server_deployment_password": "<encrypt-password>",
     "workflow_name": "gateway_nfv_plugin",
-    "bam_config_name": "DemoConfig",
+    "bam_config_name": "<configuration-name>",
     "dns_view_names": [
-        "default"
+        "<view-name>"
     ],
     "udfs_for_server": [
         {
@@ -18,7 +18,7 @@
         }
     ],
     "server_ssh_username": "root",
-    "server_ssh_password": "",
+    "server_ssh_password": "<encrypt-ssh-password>",
     "server_cap_profile": "DNS_DHCP_SERVER_60",
     "server_deploy_role": "RECURSION",
     "server_dns_raw_option": [

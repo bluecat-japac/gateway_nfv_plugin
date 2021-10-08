@@ -1,4 +1,3 @@
-
 # Copyright 2021 BlueCat Networks (USA) Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,19 +28,16 @@ from urllib.error import URLError
 from flask import g, jsonify  # pylint:disable=import-error
 from paramiko.ssh_exception import NoValidConnectionsError  # pylint:disable=ungrouped-imports
 from suds import WebFault  # pylint:disable=import-error
-from bluecat import entity  # pylint:disable=import-error
-from bluecat.api_exception import BAMException  # pylint:disable=import-error
-from bluecat.api_exception import PortalException  # pylint:disable=import-error
+from bluecat.api_exception import BAMException, PortalException  # pylint:disable=import-error
 from bluecat.util import safe_str, parse_properties  # pylint:disable=import-error
-from bluecat.util.util import get_configurations  # pylint:disable=import-error
 from bluecat.util.util import run_ssh_cmd  # pylint:disable=import-error
-from main_app import app  # pylint:disable=import-error
 
 from common.logger import Logger  # pylint:disable=no-name-in-module,import-error
 from memcached.memcached_nfv import MemcachedNFV  # pylint:disable=import-error
 from memcached.server import ServerType  # pylint:disable=import-error
 from common.common import read_config_json_file  # pylint:disable=import-error, no-name-in-module, ungrouped-imports
-from common.constants import NFV_CONFIG_PATH  # pylint:disable=import-error, no-name-in-module
+from common.constants import NFV_CONFIG_PATH, ServerProfile, CAN_SCALE_IN  # pylint:disable=import-error, no-name-in-module
+from common.APIException import InvalidServiceServerIPv6
 from common import process_password  # pylint:disable=import-error, no-name-in-module
 
 sys.path.append(os.path.abspath(
@@ -50,52 +46,28 @@ sys.path.append(os.path.abspath(
 base_dir = os.path.dirname(os.path.abspath(__file__))
 logger = Logger('gateway-nfv-management', base_dir)
 
-# Const variable
-MAX_SERVER = 20
-
-
-def get_configuration_id(configuration_name):
-    """
-    :param configuration_name: configuration name
-    :return: configuration_id
-    """
-    configuration_list = get_configurations()
-    for config in configuration_list:
-        g.user.logger.debug("BAM config: {}".format(config))
-        if config[1] == configuration_name:
-            g.user.logger.debug("Config name: {}".format(configuration_name))
-            configuration_id = config[0]
-            g.user.logger.debug("Config ID: {}".format(configuration_id))
-            break
-    if not configuration_id:
-        g.user.logger.debug("Can not find Config ID. Please check bam_config_name name in nfv_config file.")
-        return None
-    return configuration_id
-
 
 def scale_out(data):
     """
     :param data: request in json
     for example:
     {
-    "server_name": "bdd240s",
-    "mgnt_server_ip": "192.168.88.240",
-    "service_server_ipv4": "192.168.89.240",
-    "service_server_ipv6": fdac::12,
-    "service_server_netmask": 24,
-    "service_server_v6_prefix": 64,
-    "metadata": "can_scale_in=True"
+        "server_name": "bdd240s",
+        "mgnt_server_ip": "192.168.88.240",
+        "service_server_ipv4": "192.168.89.240",
+        "service_server_ipv6": "fdac::12",
+        "service_server_netmask": 24,
+        "service_server_v6_prefix": 64,
+        "metadata": "can_scale_in=True"
     }
-    :return: successful message
+    :return: successful or error message
     """
     try:
         g.user.logger.debug("Scale out request data: {}".format(data))
         data_config = read_config_json_file(NFV_CONFIG_PATH)
         g.user.logger.debug("NFV config data: {}".format(data_config))
         config_name = data_config['bam_config_name']
-        config_id = get_configuration_id(config_name)
-        if not config_id:
-            return jsonify({"status": "Failed", "message": "Configuration id not found!"}), 404
+        configuration = g.user.get_api().get_configuration(config_name)
 
         g.user.logger.info('Starting check available server')
         server_ip = data['mgnt_server_ip']
@@ -103,44 +75,54 @@ def scale_out(data):
         avail_server = is_check_available_server(server_ip, data_config['server_ssh_username'],
                                                  data_config['server_ssh_password'])
         if not avail_server:
-            return jsonify({"status": "Failed", "message": "No available server ip!"}), 404
+            return jsonify({"status": "Failed", "message": "No available server ip {}!".format(server_ip)}), 404
 
         g.user.logger.info('Starting add server')
-        server_properties = f"password={process_password.decrypt_password(data_config['server_deployment_password'])}|connected=true|upgrade=False"
+        server_properties = "password={}|connected=true|upgrade=False".format(process_password.decrypt_password(
+            data_config['server_deployment_password']))
         try:
             if data['metadata']:
                 server_properties = f"{server_properties}|{data['metadata']}"
-        except KeyError as exception:
-            g.user.logger.error(str(exception))
+        except KeyError as ex:
+            g.user.logger.error(str(ex))
             g.user.logger.error(traceback.format_exc())
 
         try:
-            if (int(data['service_server_netmask']) <= 32) and (int(data['service_server_netmask']) > 0) and data[
-                'service_server_ipv4']:
-                server_properties = f"{server_properties}|servicesIPv4Address={data['service_server_ipv4']}|servicesIPv4Netmask={cidr_to_netmask(data['service_server_netmask'])}"
-        except KeyError as exception:
-            g.user.logger.error(str(exception))
+            if (int(data['service_server_netmask']) <= 32) and (int(data['service_server_netmask']) > 0) and \
+                    data['service_server_ipv4']:
+                server_properties = "{}|servicesIPv4Address={}|servicesIPv4Netmask={}".format(server_properties, data[
+                    'service_server_ipv4'], cidr_to_netmask(data['service_server_netmask']))
+        except KeyError as ex:
+            g.user.logger.error(str(ex))
             g.user.logger.error(traceback.format_exc())
 
         try:
             if data['service_server_v6_prefix'] and data['service_server_ipv6']:
-                server_ipv6 = data['service_server_ipv6'] + \
-                              '/' + data['service_server_v6_prefix']
-                server_properties = f"{server_properties}|servicesIPv6Address={data['service_server_ipv6']}|servicesIPv6Subnet={data['service_server_v6_prefix']}"
-        except KeyError as exception:
-            g.user.logger.error(str(exception))
+                server_ipv6 = data['service_server_ipv6'] + '/' + data['service_server_v6_prefix']
+                try:
+                    ipaddress.ip_network(server_ipv6)
+                except ValueError:
+                    raise InvalidServiceServerIPv6(server_ipv6)
+                server_properties = "{}|servicesIPv6Address={}|servicesIPv6Subnet={}".format(server_properties, data[
+                    'service_server_ipv6'], data['service_server_v6_prefix'])
+        except KeyError as ex:
+            g.user.logger.error(str(ex))
             g.user.logger.error(traceback.format_exc())
 
-        if data_config['server_cap_profile']:
-            g.user.logger.debug(
-                f"Add server name {data['server_name']} server_ip {server_ip} profile {data_config['server_cap_profile']} properties {server_properties}")
-            server_id = add_server(server_ip=server_ip, server_name=data['server_name'], config_id=config_id,
-                                   profile=data_config['server_cap_profile'], properties=server_properties)
-        else:
-            g.user.logger.debug(
-                f"Add server name {data['server_name']} server_ip {server_ip} properties {server_properties}")
-            server_id = add_server(server_ip=server_ip, server_name=data['server_name'], config_id=config_id,
-                                   properties=server_properties)
+        g.user.logger.debug(
+            "Add server name {} server_ip {} profile {} properties {}".format(data['server_name'], server_ip,
+                                                                              data_config['server_cap_profile'],
+                                                                              server_properties))
+        try:
+            server_object = add_server(configuration, server_ip=server_ip, server_name=data['server_name'],
+                                       profile=data_config['server_cap_profile'], properties=server_properties)
+            server_id = server_object.get_id
+
+        except BAMException as ex:
+            if "Unknown property : {}".format(CAN_SCALE_IN) in str(ex):
+                return jsonify(
+                    {"status": "Failed", "message": "Missing add {} UDF for Server object".format(CAN_SCALE_IN)}), 400
+            raise ex
 
         g.user.logger.info('Starting create deployment roles')
         deploy_role = False
@@ -148,11 +130,11 @@ def scale_out(data):
             role_type = data.get("deploy_role", data_config['server_deploy_role'])
             for view_name in data_config['dns_view_names']:
                 g.user.logger.debug(
-                    f"Create deployment role for server {data['server_name']} view_name {view_name} role_type {role_type}")
-                role_id = create_deployment_roles(server_name=data['server_name'], server_id=server_id,
-                                                  config_id=config_id,
-                                                  view_name=view_name, role_type=role_type)
-                if not role_id:
+                    "Create deployment role for server {} view_name {} role_type {}".format(data['server_name'],
+                                                                                            view_name, role_type))
+                role = create_deployment_role_for_view(configuration, server_object, view_name=view_name,
+                                                       role_type=role_type)
+                if not role:
                     g.user.logger.info(
                         'Cannot create deployment role for view name: %s' % view_name)
                     continue
@@ -166,13 +148,14 @@ def scale_out(data):
         g.user.logger.info('Starting add raw option')
         g.user.logger.info(
             'Starting deploy DNS configuration for server name: %s' % data['server_name'])
-        deploy_server = deploy_server_config(server_id)
-        if not deploy_server:
-            g.user.logger.info('Deploy DNS configuration is failed!')
+        try:
+            server_object.deploy_services(services='DNS')
+        except Exception as ex:
+            g.user.logger.info('Deploy DNS Server is failed: {}'.format(ex))
 
         g.user.logger.info(
             'Starting wait for DNS deployment for server name: %s' % data['server_name'])
-        deploy_status = wait_for_deployment(server_id)
+        deploy_status = wait_for_deployment(server_object)
         g.user.logger.info(
             'Deployment status for server name %s, deploy status id %s' % (data['server_name'], deploy_status))
 
@@ -195,7 +178,8 @@ def scale_out(data):
              'properties': f"defaultInterfaceAddress={server_ip}|{server_properties}"},
             ServerType.BDDS, bam_ip, list_udf_name)
         g.user.logger.info(
-            f"SUCCESS: Add server to memcached with info 'id': {server_id}, 'name': {data['server_name']}, 'type': {ServerType.BDDS}, 'bam_ip': {bam_ip}")
+            "SUCCESS: Add server to memcached with info 'id': {}, 'name': {}, 'type': {}, 'bam_ip': {}".format(
+                server_id, data['server_name'], ServerType.BDDS, bam_ip))
         g.user.logger.debug(f"'properties': {server_properties}")
 
         # Remove used candidate address on memcache
@@ -239,52 +223,59 @@ def scale_in(data):
         data_config = read_config_json_file(NFV_CONFIG_PATH)
         g.user.logger.debug("NFV config data: {}".format(data_config))
         config_name = data_config['bam_config_name']
-        config_id = get_configuration_id(config_name)
-        if not config_id:
-            return jsonify({"message": "Configuration id not found!"}), 404
+        configuration = g.user.get_api().get_configuration(config_name)
 
         server_name = data['server_name']
-        server = get_server_by_name(config_id, server_name)
-        server_id = server['id']
-        if server_id == 0:
+        server_object = configuration.get_server(server_name)
+        if not server_object:
             return jsonify({"status": "Failed", "message": "Scale in failed",
                             "error": str('Server {} not found!'.format(server_name))}), 403
-        if server['properties'].split('|')[0].split('=')[0] == "defaultInterfaceAddress":
-            server_ip = server['properties'].split('|')[0].split('=')[1]
-        else:
-            server_ip = server['properties'].split('|')[1].split('=')[1]
         # delete server roles
         g.user.logger.info(
             'Starting remove server roles for server name: %s' % server_name)
-        remove_roles = delete_server_roles(server_id)
-        if not remove_roles:
-            g.user.logger.info(
-                'Remove server roles failed! Starting stop anycast service ...')
+        roles = server_object.get_deployment_roles()
+        for role in roles:
+            try:
+                role.delete()
+            except Exception as ex:
+                g.user.logger.debug(
+                    "Failed to delete roles {} in server {}: {}".format(role.to_json(), server_object.get_name(), ex))
+                g.user.logger.debug(traceback.format_exc())
+                g.user.logger.info('Remove server roles failed! Starting stop anycast service ...')
 
         if 'anycast_config' in data_config:
             stop_anycast_service(
-                server_ip, data_config['server_ssh_username'], data_config['server_ssh_password'])
+                server_object.get_property('defaultInterfaceAddress'), data_config['server_ssh_username'], data_config['server_ssh_password'])
 
-        # deploy DNS server
-        g.user.logger.info(
-            'Starting deploy DNS server for server name: %s' % server_name)
-        deploy_server = deploy_server_config(server_id)
-        if not deploy_server:
-            g.user.logger.info('Deploy DNS server is failed!')
+        # Deploy DNS server
+        g.user.logger.info('Starting deploy DNS server for server name: %s' % server_name)
+        try:
+            server_object.deploy_services(services='DNS')
+        except Exception as ex:
+            g.user.logger.info('Deploy DNS Server is failed: {}'.format(ex))
 
         # wait for deployment
         g.user.logger.info(
             'Starting wait for DNS deployment for server name: %s' % server_name)
-        deploy_status = wait_for_deployment(server_id)
-        g.user.logger.info('Deployment status for server name %s, deploy status id %s' % (
-            server_name, deploy_status))
+        deploy_status = wait_for_deployment(server_object)
+        g.user.logger.info('Deployment status for server name %s, deploy status id %s' % (server_name, deploy_status))
         g.user.logger.info('Anycast service stopped')
+
+        # Remove a server from Address Manager control
+        try:
+            bam_version = g.user.get_api()._version
+            if bam_version == '9.3.0':
+                g.user.logger.info('Remove a server named {} from Address Manager control'.format(server_name))
+                g.user.get_api()._api_client.service.updateWithOptions('disable=true|resetControl=true', server_object.to_json())
+        except Exception:
+            g.user.logger.warning('Not support remove a server {} from Address Manager version {}'.format(server_name, bam_version))
 
         # delete server from BAM
         g.user.logger.info('Deleting server %s from BAM' % server_name)
-        delete_server = delete_entity(server_id)
-        if not delete_server:
-            g.user.logger.info('Delete server %s failed' % server_name)
+        try:
+            server_object.delete()
+        except Exception as ex:
+            g.user.logger.info('Delete server {} failed: {}'.format(server_name, ex))
 
         g.user.logger.info('Deleting server from cache list')
 
@@ -292,9 +283,9 @@ def scale_in(data):
         memcached_host = data_config['memcached_host']
         memcached_port = int(data_config['memcached_port'])
         mem_nfv = MemcachedNFV(memcached_host, memcached_port)
-        mem_nfv.delete_server(server_id, ServerType.BDDS, bam_ip)
+        mem_nfv.delete_server(server_object.get_id(), ServerType.BDDS, bam_ip)
         g.user.logger.info(
-            f"SUCCESS: Delete server from memcached with info 'id': {server_id}")
+            f"SUCCESS: Delete server from memcached with info 'id': {server_object.get_id()}")
 
     except Exception as exception:
         g.user.logger.error(str(exception))
@@ -320,65 +311,6 @@ def stop_anycast_service(server_ip, username, pwd):
         g.user.logger.error(traceback.format_exc())
 
 
-def get_server_by_name(config_id, server_name):
-    """
-    Get server by name
-    :param config_id: id of configuration
-    :param server_name: name of server
-    :return:
-    """
-    try:
-        server = g.user.get_api()._api_client.service.getEntityByName(
-            config_id, server_name, entity.Entity.Server)
-        g.user.logger.debug("Server: {}".format(server))
-    except WebFault as exception:
-        raise BAMException(safe_str(exception))
-    return server
-
-
-def delete_server_roles(server_id):
-    """
-    Delete server roles
-    :param server_id: id of server
-    :return:
-    """
-    roles = get_server_roles(server_id)
-    for role in roles:
-        if not delete_entity(role):
-            return False
-    return True
-
-
-def get_server_roles(server_id):
-    """
-    Get server roles
-    :param server_id: id of server
-    :return:
-    """
-    try:
-        roles = g.user.get_api()._api_client.service.getServerDeploymentRoles(server_id)
-    except WebFault as exception:
-        g.user.logger.warning(safe_str(exception))
-        return []
-    roles_id = [role['id'] for role in roles]
-    return roles_id
-
-
-def delete_entity(entity_id):
-    """
-    Delete entity
-    :param entity_id: Id of entity
-    :return:
-    """
-    try:
-        g.user.get_api()._api_client.service.delete(entity_id)
-        return True
-    except WebFault as exception:
-        g.user.logger.error(safe_str(exception))
-        g.user.logger.error(traceback.format_exc())
-        return False
-
-
 def is_check_available_server(server_ip, username, password):
     """
     Check server available
@@ -397,101 +329,64 @@ def is_check_available_server(server_ip, username, password):
                     password=pwd_decrypt, timeout=10)
         ssh.close()
         return True
-    except (OSError, NoValidConnectionsError) as exception:
+    except (OSError, NoValidConnectionsError) as ex:
+        g.user.logger.debug(
+            "Error when heck available server {}: {}".format(server_ip, ex))
         g.user.logger.info('Not available for server IP : %s' % server_ip)
         return False
 
 
-def add_server(server_ip, server_name, config_id, profile='DNS_DHCP_SERVER_60',
+def add_server(configuration, server_ip, server_name, profile=ServerProfile.DNS_DHCP_SERVER_60,
                properties='password=bluecat|connected=true|upgrade=False'):
     """
     Add server
     :param server_ip: server ip
     :param server_name: server name
-    :param config_id: configuration id
+    :param configuration: configuration entity
     :param profile: ADONIS_1200, ADONIS_XMB3
     :param properties: contain password, servicesIPv4Address...
     :return: server_id
     """
     try:
         properties = parse_properties(properties)
-        server_id = g.user.get_api()._api_client.service.addServer(config_id, server_name, server_ip,
-                                                                   server_name.replace("_", ""),
-                                                                   profile, properties)
+        if not profile:
+            profile = ServerProfile.DNS_DHCP_SERVER_60
+        server_object = configuration.add_server(name=server_name, address=server_ip,
+                                                 host_name=server_name.replace("_", ""), profile=profile,
+                                                 properties=properties)
         start = time.time()
         max_timeout = 30
         while time.time() - start < max_timeout:
             try:
                 g.user.logger.debug(
                     f"Check time out add server {server_name} server_ip {server_ip}")
-                return g.user.get_api().get_entity_by_id(server_id).get_id()
+                return server_object
             except PortalException as exception:
-                if 'No such entity exists.:%d' % server_id in exception.get_message():
-                    pass
-                else:
+                if not 'No such entity exists.:%d' % server_object.get_id() in exception.get_message():
                     raise exception
     except WebFault as exception:
         raise BAMException(safe_str(exception))
 
 
-def create_deployment_roles(server_name, server_id, config_id, view_name, role_type, properties=''):
+def create_deployment_role_for_view(configuration, server_object, view_name, role_type, properties=''):
     """
     Create deployment roles
-    :param server_name: server name
-    :param server_id: server id
-    :param config_id: configuration id
+    :param configuration: configuration object
+    :param server_object: server object
     :param view_name: view name
     :param role_type: SLAVE_STEALTH, RECURSION
     :param properties: user-defined fields
     :return: role_id
     """
     try:
-        g.user.logger.debug(
-            f"Get view of creating deployment roles {server_name} config_id {config_id} view_name {view_name}")
-        configuration = g.user.get_api().get_entity_by_id(config_id)
         view = configuration.get_view(view_name)
-    except PortalException as exception:
-        g.user.logger.warning(
-            '%s' % exception, msg_type=g.user.logger.EXCEPTION)
-        return False
-
-    try:
-        if not server_id:
-            server_obj = g.user.get_api()._api_client.service.getEntityByName(config_id, server_name,
-                                                                              entity.Entity.Server)
-            server_id = server_obj['id']
-
         properties = parse_properties(properties)
-        g.user.logger.debug(
-            f"Get server interface of creating deployment roles {server_name} server_id {server_id}")
-        server_nsf = g.user.get_api()._api_client.service.getEntityByName(server_id, server_name,
-                                                                          entity.Entity.NetworkServerInterface)
-
-        role_id = g.user.get_api()._api_client.service.addDNSDeploymentRole(view.get_id(), server_nsf['id'],
-                                                                            role_type, properties)
-        if role_id:
-            g.user.logger.debug("Role ID: {}".format(role_id))
-            return role_id
-        else:
-            g.user.logger.error('Role creation for %s and server %s was unsuccessful!' % (
-                view_name, server_name))
-            g.user.logger.error(traceback.format_exc())
-            return False
-    except WebFault as exception:
-        g.user.logger.error(safe_str(exception))
+        role = view.add_dns_deployment_role(server_object.get_service_ip4_address_entities()[0], role_type, properties)
+        return role
+    except Exception as ex:
+        g.user.logger.error(safe_str(ex))
         g.user.logger.error(traceback.format_exc())
-        return False
-
-
-def get_list_servers(configuration_id):
-    """[Get list server in bam with this configure]
-    Returns:
-        [list] -- [list of servers entity object]
-    """
-    list_servers = g.user.get_api()._api_client.service.getEntities(
-        configuration_id, entity.Entity.Server, 0, MAX_SERVER)
-
-    return list_servers
+        return None
 
 
 def get_memcached_config():
@@ -513,23 +408,7 @@ def get_memcached_config():
     return memcached_host, int(memcached_port)
 
 
-def deploy_server_config(server_id):
-    """
-    Deploy server
-    :param server_id: server id
-    :return: True
-    """
-    try:
-        g.user.get_api()._api_client.service.deployServerConfig(
-            server_id, 'services=DNS|forceDNSFullDeployment=False')
-        return True
-    except WebFault as exception:
-        g.user.logger.error(safe_str(exception))
-        g.user.logger.error(traceback.format_exc())
-        return False
-
-
-def wait_for_deployment(server_id):
+def wait_for_deployment(server_object):
     """
     # DEPLOYMENT STATUS PARAMS
     EXECUTING = -1
@@ -544,11 +423,11 @@ def wait_for_deployment(server_id):
     NO_RECENT_DEPLOYMENT = 8
     CANCELLING = 9
 
-    :param server_id: server id
-    :return: status id
+    :param server_object: server object
+    :return: status
     """
     try:
-        status = g.user.get_api()._api_client.service.getServerDeploymentStatus(server_id)
+        status = int(server_object.get_server_deployment_status())
     except WebFault as exception:
         g.user.logger.error(safe_str(exception))
         g.user.logger.error(traceback.format_exc())
@@ -560,7 +439,7 @@ def wait_for_deployment(server_id):
         if counter > 5:
             break
         try:
-            status = g.user.get_api()._api_client.service.getServerDeploymentStatus(server_id)
+            status = int(server_object.get_server_deployment_status())
         except WebFault as exception:
             g.user.logger.error(safe_str(exception))
             g.user.logger.error(traceback.format_exc())
@@ -570,10 +449,10 @@ def wait_for_deployment(server_id):
 
 def configure_anycast(server_ip, server_ipv6, username, pwd, anycast_config):
     """
-    Config anycast
+    Configure anycast
     :param server_ip: server ip
     :param username: username
-    :param password: password
+    :param pwd: password
     :param anycast_config: configuration of anycast
     :return:
     """
@@ -781,13 +660,6 @@ def is_check_available_bam():
         return False
 
 
-def get_list_ip_in_bam(server, type_ip):
-    properties = server["properties"].split("|")
-    for p in properties:
-        if p.split("=")[0] == type_ip:
-            return p.split("=")[1]
-
-
 def get_ip_in_list_in_used_ips(mem_nvf, start_network_ip, end_network_ip, list_network_ip):
     network_ip = ipaddress.ip_address(start_network_ip)
     while True:
@@ -823,14 +695,14 @@ def get_used_addresses_on_bam(memcache):
         return [], []
     data_config = read_config_json_file(NFV_CONFIG_PATH)
     configuration_name = data_config['bam_config_name']
-    configuration_id = get_configuration_id(configuration_name)
-    g.user.logger.info('Get list server of configure_id {}'.format(configuration_id))
-    servers = get_list_servers(configuration_id)
+    configuration = g.user.get_api().get_configuration(configuration_name)
+    g.user.logger.info('Get list server from Configuration {}'.format(configuration_name))
+    servers = configuration.get_servers()
     ipv4_addresses, ipv6_addresses = [], []
     for server in servers:
-        server_mng_ip = get_list_ip_in_bam(server, "defaultInterfaceAddress")
-        server_srv_ipv4 = get_list_ip_in_bam(server, "servicesIPv4Address")
-        server_srv_ipv6 = get_list_ip_in_bam(server, "servicesIPv6Address")
+        server_mng_ip = server.get_property('defaultInterfaceAddress')
+        server_srv_ipv4 = server.get_property('servicesIPv4Address')
+        server_srv_ipv6 = server.get_property('servicesIPv6Address')
         if server_mng_ip not in ipv4_addresses:
             ipv4_addresses.append(server_mng_ip)
         if server_srv_ipv4 is not None and server_srv_ipv4 not in ipv4_addresses:

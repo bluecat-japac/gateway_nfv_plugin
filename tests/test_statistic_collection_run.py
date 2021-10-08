@@ -266,7 +266,6 @@ class TestStatisticCollectionRun(unittest.TestCase):
         mem_nfv = mock.MagicMock()
         mock_memcached_nfv.return_value = mem_nfv
         list_bdds, list_bam, list_vmhosts = ([], [], [])
-        mem_nfv.get_list_servers.return_value = list_bdds, list_bam, list_vmhosts
         snmp_config = {
             "bbds_01": {
                 "port": 161,
@@ -321,7 +320,6 @@ class TestStatisticCollectionRun(unittest.TestCase):
         vm.ipv4_address = mock.Mock()
         
         list_bdds, list_bam, list_vmhosts = ([bdds], [bam], [vm])
-        mem_nfv.get_list_servers.return_value = list_bdds, list_bam, list_vmhosts
         snmp_config = {
             "common":{
                 "port":161,

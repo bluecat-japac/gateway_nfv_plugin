@@ -16,8 +16,8 @@ DAEMONAPP_OPTS="/statistics_collection/statistic_collection_run.py"
 # stop statisticcollection before changing its PID file!
 PIDFILE="/var/run/statcol.pid"
 
-DAEMONAPP="/usr/bin/python3.6"
-NAME="python3.6"
+DAEMONAPP="/usr/bin/python3"
+NAME="python3"
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin
 test -f $DAEMONAPP || exit 0

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def safe_str(obj):
     """ Return the byte string representation of obj """
 
@@ -75,3 +76,22 @@ class PortalException(APIException):
         :param details: Details, where available, of the specific exception .
         """
         super(PortalException, self).__init__(message, details)
+
+
+class UserException(Exception):
+    def __init__(self, msg):
+        self.msg = msg or "User input incorrect"
+
+    def __str__(self):
+        return safe_str(self.msg)
+
+
+class InvalidServiceServerIPv6(UserException):
+    def __init__(self, ipv6_net):
+        self.ipv6_net = ipv6_net
+        message = "Invalid Service Server IPv6 Network {}".format(ipv6_net)
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return safe_str(self.message)

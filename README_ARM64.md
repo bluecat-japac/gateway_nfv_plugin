@@ -117,6 +117,7 @@ Below is the architecture diagram:
     For the Gateway version `20.12.1` or later:<br>
     - Additional `SESSION_COOKIE_SECURE: false` in `enviroment`
     - Replace `/buitin/` intead of `/bluecat_gateway/`
+     
 
 3. Configure **Memcached** container
 
@@ -203,6 +204,7 @@ docker build -t gateway_nfv_scheduler .
 
 1. Execute this command to install 3rd Python libraries with correct path of gateway and gateway-nfv-plugin workflow directories:
     For the Gateway version `20.6.1`:
+     
     ```bash
     docker exec nfv_gateway pip install -r /bluecat_gateway/workflows/gateway_nfv_plugin/requirements.txt
     ```
@@ -210,6 +212,7 @@ docker build -t gateway_nfv_scheduler .
     ```bash
     docker exec nfv_gateway pip install -r /builtin/workflows/gateway_nfv_plugin/requirements.txt
     ```
+    
 
 2. Access to Gateway UI. In the left sidebar, navigate to **Administration** and **Encrypt Password** action. Input the path `workflows/gateway_nfv_plugin/config/.secret` set in `config.ini` and the password of `user_name` user.
 
@@ -257,30 +260,39 @@ docker build -t gateway_nfv_scheduler .
     docker restart nfv_gateway
     ```
 ## API
-### VM Scaling API
 
-1. Request format
+### Scaling API
 
-    | HTTP Request Method | URI |
+Request format:
+
+| HTTP Request Method | URI |
+| --- | --- |
+| POST | /gateway_nfv_plugin/scale_out |
+| POST | /gateway_nfv_plugin/scale_in |
+    
+#### Scale out API
+
+1. Request parameters
+
+    | Parameter Name | Description | Note |
+    | --- | --- | --- |
+    | server_name | Name of server | MANDATORY |
+    | mgnt_server_ip | IPv4 address of server | OPTIONAL |
+    | service_server_ipv4 | IPv4 address of server | OPTIONAL |
+    | service_server_ipv6 | IPv6 address of server | OPTIONAL |
+    | service_server_netmask | Netmask of IPv4 address | MANDATORY |
+    | service_server_v6_prefix | Prefix of IPv6 address | OPTIONAL |
+    | metadata | Currently only support `can_scale_in=true/false` UDF| OPTIONAL |
+
+2. Response parameter
+
+     Parameter Name | Description |
     | --- | --- |
-    | POST | /gateway_nfv_plugin/app_vm |
-    | DELETE | /gateway_nfv_plugin/app_vm |
+    | error | Error message. If having error after scaling |
+    | message | Success message |
+    | status | Status after scaling |
 
-2. Request parameters
-
-    | Parameter Name | Description |
-    | --- | --- |
-    | vm_info | VM Information List |
-    | --vm_type | Type of the VM |
-    | --vm_name | Name of the VM. The value of this parameter has 1 to 16 bytes(including '\0'). At least one of vm_name or vm_id parameter should be exist.
-
-3. Response parameter
-
-    | Parameter Name | Description |
-    | --- | --- |
-    | Result | OK or FAIL |
-
-4. Scale out sample
+3.  Sample
 
     ```
     POST /gateway_nfv_plugin/app_vm HTTP/1.1
@@ -288,50 +300,58 @@ docker build -t gateway_nfv_scheduler .
     Content-Type: application/json
     cache-control: no-cache
     Postman-Token: 0d883cb4-c64f-4a96-bdc6-c584cb32f195
-    {
-        "vm_info": [
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_01"
-            },
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_02"
-            }
-        ]
+     {
+        "server_name": "bdds13",
+        "mgnt_server_ip": "192.168.122.13",
+        "service_server_ipv4": "192.168.122.12",
+        "service_server_ipv6": "",
+        "service_server_netmask": 24,
+        "service_server_v6_prefix": "",
+        "metadata": "can_scale_in=true"
     }
 
     Successful response result:
     HTTP/1.1 200 OK
     {
+        "error": "",
+        "message": "Scale out successfully",
         "status": "Successful"
     }
     ```
 
-5. Scale in sample
+#### Scale in API
+
+1. Request parameters
+
+    | Parameter Name | Description |
+    | --- | --- |
+    | server_name | Name of server |
+
+2. Response parameter
+
+     Parameter Name | Description |
+    | --- | --- |
+    | error | Error message. If having error after scaling |
+    | message | Success message |
+    | status | Status after scaling |
+
+3.  Sample
 
     ```
-    DELETE /gateway_nfv_plugin/app_vm HTTP/1.1
+    POST /gateway_nfv_plugin/app_vm HTTP/1.1
     Host: example.com:5000
     Content-Type: application/json
     cache-control: no-cache
-    Postman-Token: 1e77f51a-759b-4b2e-ab41-c8a0c0aefb26
-    {
-        "vm_info": [
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_01"
-            },
-            {
-                "vm_type": "bdds",
-                "vm_name": "bdds_02"
-            }
-        ]
+    Postman-Token: 0d883cb4-c64f-4a96-bdc6-c584cb32f195
+     {
+        "server_name": "bdds13"
     }
 
     Successful response result:
     HTTP/1.1 200 OK
     {
+        "error": "",
+        "message": "Scale in successfully",
         "status": "Successful"
     }
     ```

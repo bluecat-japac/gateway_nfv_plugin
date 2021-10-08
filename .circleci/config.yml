@@ -16,7 +16,7 @@ jobs:
             name: Build gateway_nfv_scheduler:${CIRCLE_TAG} image
             command: |
               ls -la 
-              docker build -t gateway_nfv_scheduler:${CIRCLE_TAG} .
+              docker build -t gateway_nfv_scheduler:${CIRCLE_TAG} -f deployment/dockerfiles/scheduler.Dockerfile .
         - run:
             name: Export gateway_nfv_scheduler:${CIRCLE_TAG} image
             command: |

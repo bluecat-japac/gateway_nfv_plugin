@@ -19,10 +19,7 @@ import base64
 import re
 from cryptography.fernet import Fernet, InvalidToken # pylint:disable=import-error
 
-from .constants import (
-    NFV_CONFIG_PATH,
-    CONFIG_PATH
-)
+from .constants import NFV_CONFIG_PATH, CONFIG_PATH
 
 
 def read_config_json_file(file_path):

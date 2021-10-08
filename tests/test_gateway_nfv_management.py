@@ -1,4 +1,3 @@
-
 # Copyright 2021 BlueCat Networks (USA) Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 # pylint: disable=missing-docstring, missing-final-newline
 import unittest
-import sys
-import context
 from unittest import mock  # pylint: disable=import-error
 
 sys.modules["flask"] = mock.Mock()
@@ -27,51 +25,12 @@ class TestGatewayNFVManagement(unittest.TestCase):
     """
     Test Gateway NFV Plugin Management
     """
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configurations')
-    def test_get_configuration_id(self, mock_get_configuration):
-        # pylint: disable=missing-docstring
-        configuration_list = [[124707, 'DemoConfig']]
-        configuration_name = "DemoConfig"
-        mock_get_configuration.return_value = configuration_list
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_configuration_id  # pylint:disable=import-error
-        actual = get_configuration_id(configuration_name)
-        expected = 124707
-        self.assertEqual(expected, actual)
-        mock_get_configuration.assert_called_once_with()
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configurations')
-    def test_get_configuration_id_none(self, mock_get_configuration):
-        # pylint: disable=missing-docstring
-        configuration_list = [["", "DemoConfig"]]
-        configuration_name = "DemoConfig"
-        mock_get_configuration.return_value = configuration_list
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_configuration_id  # pylint:disable=import-error
-        actual = get_configuration_id(configuration_name)
-        expected = None
-        self.assertEqual(expected, actual)
-        mock_get_configuration.assert_called_once_with()
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
-    def test_scale_out_with_not_config_id(self, mock_get_configuration_id, mock_jsonify):
-        # pylint: disable=missing-docstring
-        config_id = None
-        data = ""
-        mock_get_configuration_id.return_value = config_id
-        jsonify = {"status": "Failed",
-                   "message": "Configuration id not found!"}
-        mock_jsonify.return_value = jsonify
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_out # pylint:disable=import-error
-        actual = scale_out(data)
-        expect = (jsonify, 404)
-        self.assertEqual(expect, actual)
-        mock_get_configuration_id.assert_called_once()
 
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_with_not_available_server(self, mock_read_config_json_file, mock_get_configuration_id, mock_jsonify, mock_is_check_available_server):
+    def test_scale_out_with_not_available_server(self, mock_read_config_json_file, mock_jsonify,
+                                                 mock_is_check_available_server):
         # pylint: disable=missing-docstring
         data = {
             "mgnt_server_ip": "192.168.88.169",
@@ -85,7 +44,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = False
         mock_is_check_available_server.return_value = avail_server
         jsonify = {"status": "Failed", "message": "No available server ip!"}
@@ -98,9 +56,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.process_password')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_exception_metadata(self, mock_read_config_json_file, mock_get_configuration_id,
+    def test_scale_out_exception_metadata(self, mock_read_config_json_file,
                                           mock_is_check_available_server, mock_process_password, mock_g):
         # pylint: disable=missing-docstring
         data = {
@@ -116,7 +73,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_properties = "nhiii"
@@ -129,10 +85,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.process_password')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_with_exception_service_server_netmask(self, mock_read_config_json_file, mock_get_configuration_id,
-                                                             mock_is_check_available_server, mock_process_password, mock_g):
+    def test_scale_out_with_exception_service_server_netmask(self, mock_read_config_json_file,
+                                                             mock_is_check_available_server, mock_process_password,
+                                                             mock_g):
         # pylint: disable=missing-docstring
         data = {
             "mgnt_server_ip": "192.168.88.169",
@@ -149,7 +105,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_properties = "nhiii"
@@ -162,10 +117,9 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.process_password')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_with_exception_service_ipv6(self, mock_read_config_json_file, mock_get_configuration_id,
-                                                    mock_is_check_available_server, mock_process_password, mock_g):
+    def test_scale_out_with_exception_service_ipv6(self, mock_read_config_json_file,
+                                                   mock_is_check_available_server, mock_process_password, mock_g):
         # pylint: disable=missing-docstring
         data = {
             "mgnt_server_ip": "192.168.88.169",
@@ -185,7 +139,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_properties = "nhiii"
@@ -200,10 +153,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.create_deployment_roles')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.add_server')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_with_none_role_id(self, mock_read_config_json_file, mock_get_configuration_id, mock_is_check_available_server,
-                                            mock_add_server, mock_create_deployment_roles, mock_process_password, mock_jsonify):
+    def test_scale_out_with_none_role_id(self, mock_read_config_json_file, mock_is_check_available_server,
+                                         mock_add_server, mock_create_deployment_roles, mock_process_password,
+                                         mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
             "mgnt_server_ip": "192.168.88.169",
@@ -227,7 +180,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_properties = "nhiii"
@@ -248,10 +200,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.create_deployment_roles')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.add_server')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_with_none_server_cap_profile(self, mock_read_config_json_file, mock_get_configuration_id, mock_is_check_available_server,
-                                                    mock_add_server, mock_create_deployment_roles, mock_process_password, mock_jsonify):
+    def test_scale_out_with_none_server_cap_profile(self, mock_read_config_json_file, mock_is_check_available_server,
+                                                    mock_add_server, mock_create_deployment_roles,
+                                                    mock_process_password, mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
             "mgnt_server_ip": "192.168.88.169",
@@ -275,7 +227,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_properties = "nhiii"
@@ -296,9 +247,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.create_deployment_roles')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.add_server')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_with_dns_view(self, mock_read_config_json_file, mock_get_configuration_id, mock_is_check_available_server, mock_add_server,
+    def test_scale_out_with_dns_view(self, mock_read_config_json_file, mock_is_check_available_server, mock_add_server,
                                      mock_create_deployment_roles, mock_process_password, mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
@@ -323,7 +273,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_properties = "nhiii"
@@ -343,14 +292,12 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.MemcachedNFV')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.process_password')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.wait_for_deployment')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.deploy_server_config')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.create_deployment_roles')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.add_server')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.is_check_available_server')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_out_successfully(self, mock_read_config_json_file, mock_get_configuration_id, mock_is_check_available_server,
-                                    mock_add_server, mock_create_deployment_roles, mock_deploy_server_config,
+    def test_scale_out_successfully(self, mock_read_config_json_file, mock_is_check_available_server,
+                                    mock_add_server, mock_create_deployment_roles,
                                     mock_wait_for_deployment, mock_process_password, mock_memcached_nfv, mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
@@ -384,7 +331,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         }
         mock_read_config_json_file.return_value = data_config
         config_id = 102728
-        mock_get_configuration_id.return_value = config_id
         avail_server = True
         mock_is_check_available_server.return_value = avail_server
         server_id = 334498
@@ -393,8 +339,6 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_add_server.return_value = server_id
         role_id = 111
         mock_create_deployment_roles.return_value = role_id
-        deploy_server = True
-        mock_deploy_server_config.return_value = deploy_server
         deploy_status = True
         mock_wait_for_deployment.return_value = deploy_status
         mem_nfv = []
@@ -407,12 +351,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
         self.assertEqual(expect, actual)
 
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
-    def test_scale_in_with_not_config_id(self, mock_get_configuration_id, mock_jsonify):
+    def test_scale_in_with_not_config_id(self, mock_jsonify):
         # pylint: disable=missing-docstring
         config_id = None
         data = ""
-        mock_get_configuration_id.return_value = config_id
         jsonify = {"status": "Failed",
                    "message": "Configuration id not found!"}
         mock_jsonify.return_value = jsonify
@@ -420,18 +362,13 @@ class TestGatewayNFVManagement(unittest.TestCase):
         actual = scale_in(data)
         expect = (jsonify, 404)
         self.assertEqual(expect, actual)
-        mock_get_configuration_id.assert_called_once()
 
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.MemcachedNFV')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_entity')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.wait_for_deployment')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.deploy_server_config')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_server_roles')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_server_by_name')
-    def test_scale_in_failed_remove_roles_false(self, mock_get_server_by_name, mock_delete_server_roles, mock_deploy_server_config, mock_wait_for_deployment,
-                                                mock_delete_entity, mock_memcache_nfv, mock_g, mock_jsonify):
+    def test_scale_in_failed_remove_roles_false(self, mock_wait_for_deployment, mock_memcache_nfv, mock_g,
+                                                mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
             "metadata": "",
@@ -457,15 +394,9 @@ class TestGatewayNFVManagement(unittest.TestCase):
             "type": "Server",
             "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
         }
-        mock_get_server_by_name.return_value = server
-        remove_roles = False
-        mock_delete_server_roles.return_value = remove_roles
-        deploy_server = True
-        mock_deploy_server_config.return_value = deploy_server
         deploy_status = 1
         mock_wait_for_deployment.return_value = deploy_status
         delete_server = True
-        mock_delete_entity.return_value = delete_server
         mem_nfv = mock.Mock()
         mock_memcache_nfv.return_value = mem_nfv
         mock_g.user.logger.error.side_effect = Exception("exception")
@@ -473,7 +404,7 @@ class TestGatewayNFVManagement(unittest.TestCase):
         jsonify = {"status": "Failed",
                    "message": "Scale in failed", "error": str(exception)}
         mock_jsonify.return_value = jsonify
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = scale_in(data)
             expect = (jsonify, 500)
@@ -482,13 +413,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.MemcachedNFV')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_entity')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.wait_for_deployment')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.deploy_server_config')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_server_roles')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_server_by_name')
-    def test_scale_in_failed_with_default_interface_address_not_correct_position(self, mock_get_server_by_name, mock_delete_server_roles,
-                                                                                 mock_deploy_server_config, mock_wait_for_deployment, mock_delete_entity, mock_memcache_nfv, mock_g, mock_jsonify):
+    def test_scale_in_failed_with_default_interface_address_not_correct_position(self, mock_wait_for_deployment,
+                                                                                 mock_memcache_nfv, mock_g,
+                                                                                 mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
             "metadata": "",
@@ -514,16 +442,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
             "type": "Server",
             "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
         }
-        mock_get_server_by_name.return_value = server
-        remove_roles = False
         server['properties'].split('|')[0].split('=')[0] = "nhiii"
-        mock_delete_server_roles.return_value = remove_roles
-        deploy_server = True
-        mock_deploy_server_config.return_value = deploy_server
         deploy_status = 1
         mock_wait_for_deployment.return_value = deploy_status
         delete_server = True
-        mock_delete_entity.return_value = delete_server
         mem_nfv = mock.Mock()
         mock_memcache_nfv.return_value = mem_nfv
         mock_g.user.logger.error.side_effect = Exception("exception")
@@ -531,7 +453,7 @@ class TestGatewayNFVManagement(unittest.TestCase):
         jsonify = {"status": "Failed",
                    "message": "Scale in failed", "error": str(exception)}
         mock_jsonify.return_value = jsonify
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = scale_in(data)
             expect = (jsonify, 500)
@@ -540,13 +462,9 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.MemcachedNFV')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_entity')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.wait_for_deployment')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.deploy_server_config')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_server_roles')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_server_by_name')
-    def test_scale_in_failed_with_deploy_server_false(self, mock_get_server_by_name, mock_delete_server_roles, mock_deploy_server_config, mock_wait_for_deployment,
-                                                      mock_delete_entity, mock_memcache_nfv, mock_g, mock_jsonify):
+    def test_scale_in_failed_with_deploy_server_false(self, mock_wait_for_deployment, mock_memcache_nfv, mock_g,
+                                                      mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
             "metadata": "",
@@ -572,16 +490,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
             "type": "Server",
             "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
         }
-        mock_get_server_by_name.return_value = server
-        remove_roles = False
         server['properties'].split('|')[0].split('=')[0] = "nhiii"
-        mock_delete_server_roles.return_value = remove_roles
-        deploy_server = False
-        mock_deploy_server_config.return_value = deploy_server
         deploy_status = 1
         mock_wait_for_deployment.return_value = deploy_status
         delete_server = True
-        mock_delete_entity.return_value = delete_server
         mem_nfv = mock.Mock()
         mock_memcache_nfv.return_value = mem_nfv
         mock_g.user.logger.error.side_effect = Exception("exception")
@@ -589,7 +501,7 @@ class TestGatewayNFVManagement(unittest.TestCase):
         jsonify = {"status": "Failed",
                    "message": "Scale in failed", "error": str(exception)}
         mock_jsonify.return_value = jsonify
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = scale_in(data)
             expect = (jsonify, 500)
@@ -598,17 +510,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.jsonify')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.MemcachedNFV')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_entity')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.wait_for_deployment')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.deploy_server_config')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_server_roles')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_server_by_name')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_configuration_id')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
-    def test_scale_in_failed_with_delete_server_false(self, mock_read_config_json_file, mock_get_configuration_id,
-                                                      mock_get_server_by_name, mock_delete_server_roles, mock_deploy_server_config, mock_wait_for_deployment,
-                                                      mock_delete_entity, mock_memcache_nfv, mock_g, mock_jsonify):
-
+    def test_scale_in_failed_with_delete_server_false(self, mock_read_config_json_fil, mock_wait_for_deployment,
+                                                      mock_memcache_nfv, mock_g, mock_jsonify):
         # pylint: disable=missing-docstring
         data = {
             "metadata": "",
@@ -634,16 +539,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
             "type": "Server",
             "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
         }
-        mock_get_server_by_name.return_value = server
-        remove_roles = False
         server['properties'].split('|')[0].split('=')[0] = "nhiii"
-        mock_delete_server_roles.return_value = remove_roles
-        deploy_server = False
-        mock_deploy_server_config.return_value = deploy_server
         deploy_status = 1
         mock_wait_for_deployment.return_value = deploy_status
         delete_server = False
-        mock_delete_entity.return_value = delete_server
         mem_nfv = mock.Mock()
         mock_memcache_nfv.return_value = mem_nfv
         mock_g.user.logger.error.side_effect = Exception("exception")
@@ -651,7 +550,7 @@ class TestGatewayNFVManagement(unittest.TestCase):
         jsonify = {"status": "Failed",
                    "message": "Scale in failed", "error": str(exception)}
         mock_jsonify.return_value = jsonify
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import scale_in  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = scale_in(data)
             expect = (jsonify, 500)
@@ -667,7 +566,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         server_id = 334498
         username = "root"
         pwd = "d8e8fca"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import stop_anycast_service # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            stop_anycast_service  # pylint:disable=import-error
         stop_anycast_service(server_id, username, pwd)
         mock_g.user.logger.debug.assert_called_once()
 
@@ -681,135 +581,10 @@ class TestGatewayNFVManagement(unittest.TestCase):
         server_id = 334498
         username = "root"
         pwd = "d8e8fca"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import stop_anycast_service # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            stop_anycast_service  # pylint:disable=import-error
         stop_anycast_service(server_id, username, pwd)
         self.assertEqual(mock_g.user.logger.error.call_count, 2)
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_get_server_by_name(self, mock_g):
-        # pylint: disable=missing-docstring
-        server = {
-            "id": 334498,
-            "name": "bdds169",
-            "type": "Server",
-            "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
-        }
-        config_id = 102728
-        server_name = "bdds169"
-        mock_g.user.get_api.return_value._api_client.service.getEntityByName.return_value = server
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_server_by_name # pylint:disable=import-error
-        actual = get_server_by_name(config_id, server_name)
-        expected = server
-        self.assertEqual(expected, actual)
-        mock_g.user.get_api.return_value._api_client.service.getEntityByName.assert_called_once()
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.WebFault', Exception)
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.BAMException', Exception)
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_get_server_by_name_with_exception(self, mock_g):
-        # pylint: disable=missing-docstring
-        config_id = 102728
-        server_name = "bdds169"
-        mock_g.user.get_api.return_value._api_client.service.getEntityByName.side_effect = Exception("exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_server_by_name  # pylint:disable=import-error
-        with self.assertRaises(Exception):
-            get_server_by_name(config_id, server_name)
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_entity')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_server_roles')
-    def test_delete_server_roles_with_delete_entity_true(self, mock_get_server_roles, mock_delete_entity):
-        # pylint: disable=missing-docstring
-        roles = [335958, 335957]
-        mock_get_server_roles.return_value = roles
-        server_id = "334498"
-        mock_delete_entity.return_value = True
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import delete_server_roles # pylint:disable=import-error
-        actual = delete_server_roles(server_id)
-        expected = True
-        self.assertEqual(expected, actual)
-        mock_get_server_roles.assert_called_once()
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.delete_entity')
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.get_server_roles')
-    def test_delete_server_roles_with_delete_entity_false(self, mock_get_server_roles, mock_delete_entity):
-        # pylint: disable=missing-docstring
-        roles = [335958, 335957]
-        mock_get_server_roles.return_value = roles
-        server_id = "334498"
-        mock_delete_entity.return_value = False
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import delete_server_roles # pylint:disable=import-error
-        actual = delete_server_roles(server_id)
-        expected = False
-        self.assertEqual(expected, actual)
-        mock_get_server_roles.assert_called_once_with(server_id)
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_get_server_roles(self, mock_g):
-        # pylint: disable=missing-docstring
-        server_id = "334498"
-        roles = [
-            {
-                "id": 335958,
-                "entityId": 160080,
-                "serverInterfaceId": 332455,
-                "type": "NONE",
-                "service": "DHCP",
-                "properties": "readOnly=false|secondaryServerInterfaceId=334499|"
-            },
-            {
-                "id": 335957,
-                "entityId": 160080,
-                "serverInterfaceId": 332455,
-                "type": "NONE",
-                "service": "DHCP",
-                "properties": "readOnly=false|secondaryServerInterfaceId=334499|"
-            }]
-        mock_g.user.get_api.return_value._api_client.service.getServerDeploymentRoles.return_value = roles
-        roles_id = [335958, 335957]
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_server_roles # pylint:disable=import-error
-        actual = get_server_roles(server_id)
-        expected = roles_id
-        self.assertEqual(expected, actual)
-        mock_g.user.get_api.return_value._api_client.service.getServerDeploymentRoles.assert_called_once()
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.WebFault', Exception)
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_get_server_roles_none(self, mock_g):
-        # pylint: disable=missing-docstring
-        server_id = "334498"
-        mock_g.user.logger.warning.side_effect = Exception("exception")
-        mock_g.user.get_api.return_value._api_client.service.getServerDeploymentRoles.side_effect = Exception(
-            "exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_server_roles # pylint:disable=import-error
-        with self.assertRaises(Exception) as context:
-            actual = get_server_roles(server_id)
-            expect = []
-            self.assertEqual(actual, expect)
-        self.assertTrue("exception" in str(context.exception))
-        mock_g.user.get_api.return_value._api_client.service.getServerDeploymentRoles.assert_called_once()
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_delete_entity_true(self, mock_g):
-        # pylint: disable=missing-docstring
-        entity_id = "334498"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import delete_entity # pylint:disable=import-error
-        actual = delete_entity(entity_id)
-        expected = True
-        self.assertEqual(expected, actual)
-        mock_g.user.get_api.return_value._api_client.service.delete.assert_called_once_with(
-            entity_id)
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.WebFault', Exception)
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_delete_entity_false(self, mock_g):
-        # pylint: disable=missing-docstring
-        entity_id = "334498"
-        mock_g.user.get_api.return_value._api_client.service.delete.side_effect = Exception("exception")
-        mock_g.user.logger.error.side_effect = Exception("exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import delete_entity  # pylint:disable=import-error
-        with self.assertRaises(Exception) as context:
-            delete_entity(entity_id)
-        self.assertTrue('except' in str(context.exception))
 
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.process_password')
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.paramiko')
@@ -822,7 +597,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         username = "root"
         password = "d8e8fca"
         mock_process_password.decrypt_password.return_value = pwd_decrypt
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import is_check_available_server # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            is_check_available_server  # pylint:disable=import-error
         actual = is_check_available_server(server_ip, username, password)
         expected = True
         self.assertEqual(actual, expected)
@@ -842,7 +618,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         password = "d8e8fca"
         mock_process_password.decrypt_password.return_value = pwd_decrypt
         ssh.connect.side_effect = OSError('exception'), Exception("exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import is_check_available_server # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            is_check_available_server  # pylint:disable=import-error
         actual = is_check_available_server(server_ip, username, password)
         expect = False
         self.assertEqual(actual, expect)
@@ -863,7 +640,7 @@ class TestGatewayNFVManagement(unittest.TestCase):
         start = 15
         mock_time.time.return_value = start
         mock_g.user.get_api.return_value.get_entity_by_id.return_value.get_id.return_value = server_id
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import add_server # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import add_server  # pylint:disable=import-error
         actual = add_server(server_ip, server_name,
                             config_id, profile, properties)
         expected = server_id
@@ -907,7 +684,7 @@ class TestGatewayNFVManagement(unittest.TestCase):
         start = 15
         mock_time.time.return_value = start
         mock_g.user.get_api.return_value.get_entity_by_id.return_value.get_id.return_value = server_id
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import add_server # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import add_server  # pylint:disable=import-error
         with self.assertRaises(Exception) as context:
             add_server(server_ip, server_name,
                        config_id, profile, properties)
@@ -926,7 +703,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         role_type = "SLAVE_STEALTH"
         properties = ""
         mock_g.user.logger.warning.side_effect = Exception("exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import create_deployment_roles # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            create_deployment_roles  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = create_deployment_roles(
                 server_name, server_id, config_id, view_name, role_type, properties)
@@ -958,7 +736,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         properties = ""
         role_id = None
         mock_g.user.get_api.return_value._api_client.service.addDNSDeploymentRole.return_value = role_id
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import create_deployment_roles # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            create_deployment_roles  # pylint:disable=import-error
         actual = create_deployment_roles(
             server_name, server_id, config_id, view_name, role_type, properties)
         expected = False
@@ -981,7 +760,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         properties = ""
         role_id = 111
         mock_g.user.get_api.return_value._api_client.service.addDNSDeploymentRole.return_value = role_id
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import create_deployment_roles # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            create_deployment_roles  # pylint:disable=import-error
         actual = create_deployment_roles(
             server_name, server_id, config_id, view_name, role_type, properties)
         expected = role_id
@@ -1010,7 +790,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         role_type = "SLAVE_STEALTH"
         properties = ""
         mock_g.user.get_api.return_value._api_client.service.addDNSDeploymentRole.return_value = None
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import create_deployment_roles # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            create_deployment_roles  # pylint:disable=import-error
         actual = create_deployment_roles(
             server_name, server_id, config_id, view_name, role_type, properties)
         expected = False
@@ -1033,7 +814,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_g.user.get_api.return_value._api_client.service.addDNSDeploymentRole.side_effect = Exception(
             "exception")
         mock_g.user.logger.error.side_effect = Exception("exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import create_deployment_roles # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            create_deployment_roles  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = create_deployment_roles(
                 server_name, server_id, config_id, view_name, role_type, properties)
@@ -1053,34 +835,13 @@ class TestGatewayNFVManagement(unittest.TestCase):
         view_name = "default"
         role_type = "SLAVE_STEALTH"
         properties = ""
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import create_deployment_roles # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            create_deployment_roles  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = create_deployment_roles(
                 server_name, server_id, config_id, view_name, role_type, properties)
             expected = False
             self.assertEqual(expected, actual)
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_get_list_servers(self, mock_g):
-        # pylint: disable=missing-docstring
-        list_server = [{
-            "id": 334498,
-            "name": "bdds169",
-            "type": "Server",
-            "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
-        }, {
-            "id": 332454,
-            "name": "bdds141",
-            "type": "Server",
-            "properties": "defaultInterfaceAddress=192.168.88.169|servicesIPv4Address=192.168.89.169|servicesIPv6Address=FDAC:1400:1::20|fullHostName=bdds169|profile=DNS_DHCP_INTEGRITY_BRANCH|"
-        }]
-        configuration_id = 102728
-        mock_g.user.get_api.return_value._api_client.service.getEntities.return_value = list_server
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_list_servers # pylint:disable=import-error
-        actual = get_list_servers(configuration_id)
-        expected = list_server
-        self.assertEqual(expected, actual)
-        mock_g.user.get_api.return_value._api_client.service.getEntities.assert_called_once()
 
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.read_config_json_file')
     def test_get_memcached_config(self, mock_read_config_json_file):
@@ -1098,7 +859,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_read_config_json_file.return_value = data_config
         memcached_host = "192.168.88.170"
         memcached_port = 11211
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_memcached_config # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            get_memcached_config  # pylint:disable=import-error
         actual = get_memcached_config()
         expected = memcached_host, int(memcached_port)
         self.assertEqual(expected, actual)
@@ -1109,32 +871,11 @@ class TestGatewayNFVManagement(unittest.TestCase):
         # pylint: disable=missing-docstring
         data_config = {}
         mock_read_config_json_file.return_value = data_config
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import get_memcached_config # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            get_memcached_config  # pylint:disable=import-error
         with self.assertRaises(Exception):
             get_memcached_config()
         mock_read_config_json_file.assert_called_once()
-
-    def test_deploy_server_config_true(self):
-        # pylint: disable=missing-docstring
-        server_id = 334498
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import deploy_server_config # pylint:disable=import-error
-        actual = deploy_server_config(server_id)
-        expect = True
-        self.assertEqual(actual, expect)
-
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.WebFault', Exception)
-    @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
-    def test_deploy_server_config_false(self, mock_g):
-        # pylint: disable=missing-docstring
-        server_id = 334498
-        mock_g.user.get_api.return_value._api_client.service.deployServerConfig.side_effect = Exception(
-            "exception")
-        mock_g.user.logger.error.side_effect = Exception("exception")
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import deploy_server_config # pylint:disable=import-error
-        with self.assertRaises(Exception):
-            actual = deploy_server_config(server_id)
-            expect = False
-            self.assertEqual(actual, expect)
 
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.WebFault', Exception)
     @mock.patch('GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management.g')
@@ -1143,7 +884,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         status = None
         mock_g.user.get_api.return_value._api_client.service.getServerDeploymentStatus.return_value = status
         server_id = "334498"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import wait_for_deployment  # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            wait_for_deployment  # pylint:disable=import-error
         with self.assertRaises(Exception):
             actual = wait_for_deployment(server_id)
             expect = False
@@ -1155,7 +897,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         status = 2
         mock_g.user.get_api.return_value._api_client.service.getServerDeploymentStatus.return_value = status
         server_id = "334498"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import wait_for_deployment # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            wait_for_deployment  # pylint:disable=import-error
         actual = wait_for_deployment(server_id)
         expect = status
         self.assertEqual(actual, expect)
@@ -1170,7 +913,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         status = 9
         mock_g.user.get_api.return_value._api_client.service.getServerDeploymentStatus.return_value = status
         server_id = "334498"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import wait_for_deployment # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            wait_for_deployment  # pylint:disable=import-error
         actual = wait_for_deployment(server_id)
         expect = status
         self.assertEqual(actual, expect)
@@ -1183,7 +927,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
             "exception")
         server_id = "334498"
         result = False
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import wait_for_deployment # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            wait_for_deployment  # pylint:disable=import-error
         actual = wait_for_deployment(server_id)
         expect = result
         self.assertEqual(actual, expect)
@@ -1222,7 +967,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_set.return_value = psm_overrides
         output, error = "nhiii", "info"
         mock_run_ssh_cmd.return_value = output, error
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import configure_anycast # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            configure_anycast  # pylint:disable=import-error
         configure_anycast(server_ip, server_ipv6,
                           username, pwd, anycast_config)
 
@@ -1260,7 +1006,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_set.return_value = psm_overrides
         output, error = "nhiii", "info"
         mock_run_ssh_cmd.return_value = output, error
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import configure_anycast # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            configure_anycast  # pylint:disable=import-error
         configure_anycast(server_ip, server_ipv6,
                           username, pwd, anycast_config)
 
@@ -1305,7 +1052,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_set.return_value = psm_overrides
         output, error = "nhiii", "info"
         mock_run_ssh_cmd.return_value = output, error
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import configure_anycast  # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            configure_anycast  # pylint:disable=import-error
         configure_anycast(server_ip, server_ipv6,
                           username, pwd, anycast_config)
 
@@ -1336,7 +1084,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         mock_set.return_value = psm_overrides
         output, error = "nhiii", "info"
         mock_run_ssh_cmd.return_value = output, error
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import configure_anycast # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            configure_anycast  # pylint:disable=import-error
         configure_anycast(server_ip, server_ipv6,
                           username, pwd, anycast_config)
 
@@ -1349,7 +1098,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         username = "root"
         password = "d8e8fca"
         cmd = ""
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import run_psmclient_cmd # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            run_psmclient_cmd  # pylint:disable=import-error
         actual = run_psmclient_cmd(server_ip, username, password, cmd)
         expect = output
         self.assertEqual(actual, expect)
@@ -1363,7 +1113,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         username = "root"
         password = "d8e8fca"
         cmd = ""
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import run_psmclient_cmd # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            run_psmclient_cmd  # pylint:disable=import-error
         actual = run_psmclient_cmd(server_ip, username, password, cmd)
         expect = output
         self.assertEqual(actual, expect)
@@ -1373,7 +1124,8 @@ class TestGatewayNFVManagement(unittest.TestCase):
         # pylint: disable=missing-docstring
         net_bits = 24
         mock_socket.inet_ntoa.return_value = "255.255.255.0"
-        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import cidr_to_netmask  # pylint:disable=import-error
+        from GatewayNFVPlugin.gateway_nfv_plugin.gateway_nfv_management import \
+            cidr_to_netmask  # pylint:disable=import-error
         actual = cidr_to_netmask(net_bits)
         expect = "255.255.255.0"
         self.assertEqual(actual, expect)
