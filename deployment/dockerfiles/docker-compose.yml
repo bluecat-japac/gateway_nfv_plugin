@@ -33,8 +33,10 @@ services:
     environment:
       - BAM_IP=<bam-ip>
       - LOCAL_USER_ID=<local-user-id>
+      - SESSION_COOKIE_SECURE=<true/false>
     volumes:
       - <gw-logs-dir>:/logs
+      - <config-dir>:/builtin/workflows/gateway_nfv_plugin/config/
 networks:
   nfv_network:
     name: nfv_network
