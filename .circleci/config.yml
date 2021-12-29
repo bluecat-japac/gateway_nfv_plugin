@@ -18,6 +18,13 @@ jobs:
               ls -la 
               docker build -t gateway_nfv_scheduler:${CIRCLE_TAG} -f deployment/dockerfiles/scheduler.Dockerfile .
         - run:
+            name: Support build cleaned gateway_nfv_scheduler images
+            command: |
+              cd deployment/dockerfiles/
+              sed -i -e 's/<tag>/${CIRCLE_TAG}/g' cleaned.Dockerfile
+              docker build --build-arg IMAGE=gateway_nfv_scheduler:${CIRCLE_TAG} --tag=cleaned_gateway_nfv_scheduler:${CIRCLE_TAG} -f cleaned.Dockerfile .
+              docker tag cleaned_gateway_nfv_scheduler:${CIRCLE_TAG} gateway_nfv_scheduler:${CIRCLE_TAG}
+        - run:
             name: Export gateway_nfv_scheduler:${CIRCLE_TAG} image
             command: |
               docker save -o gateway_nfv_scheduler.tar gateway_nfv_scheduler:${CIRCLE_TAG}
