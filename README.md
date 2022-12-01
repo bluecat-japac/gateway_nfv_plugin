@@ -1,5 +1,9 @@
 # gateway-nfv-plugin
 
+This repository is no longer actively maintained.
+
+Please contact BlueCat for assistance with implmenting the BlueCat solution on your chosen NFV platform.
+
 ## Architecture
 
 Below is the architecture diagram:
