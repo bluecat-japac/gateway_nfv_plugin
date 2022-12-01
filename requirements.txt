@@ -16,5 +16,5 @@
 pymemcache==2.1.1
 cryptography==3.3.2
 suds_jurko==0.6
-suds==0.3.5
+suds==1.0.0
 tzlocal==2.1
